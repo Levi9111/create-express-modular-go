@@ -1,0 +1,23 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
+*.test
+*.out
+
+# OS & Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project temp
+speed-test/
+test-api/
+prisma-api/
