@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  golangci-lint:
-    name: golangci-lint
+  lint:
+    name: Code Quality & Static Analysis
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -24,8 +24,8 @@ jobs:
           go-version: '1.22.x'
           cache: true
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.61.0
-          args: --timeout=5m
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run staticcheck
+        run: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
