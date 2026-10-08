@@ -2,6 +2,8 @@
 
 > **High-Performance Native Golang Engine for Scaffolding Clean-Architecture Express.js + TypeScript Backends in Sub-10 Milliseconds.**
 
+[![CI](https://github.com/Levi9111/create-express-modular-go/actions/workflows/ci.yml/badge.svg)](https://github.com/Levi9111/create-express-modular-go/actions/workflows/ci.yml)
+[![Security](https://github.com/Levi9111/create-express-modular-go/actions/workflows/security.yml/badge.svg)](https://github.com/Levi9111/create-express-modular-go/actions/workflows/security.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Levi9111/create-express-modular-go)](https://goreportcard.com/report/github.com/Levi9111/create-express-modular-go)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/Levi9111/create-express-modular-go)](https://golang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -330,14 +332,37 @@ Outputs in `bin/`:
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing & Quality Assurance
 
 ```bash
+# Run unit test suite
 make test
+
+# Run tests with race detection
+make test-race
+
+# Generate code coverage summary
+make test-coverage
+
+# Format and vet codebase
+make check
 ```
 
 ---
 
+## 🤝 Community & Contributing
+
+We welcome community contributions, bug reports, and suggestions!
+
+- **Contributing Guide:** [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Code of Conduct:** [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- **Security Policy:** [SECURITY.md](SECURITY.md)
+- **Report Bugs:** [GitHub Issues](https://github.com/Levi9111/create-express-modular-go/issues/new/choose)
+
+---
+
 ## 📄 License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 MIT © [Levi9111](https://github.com/Levi9111)
