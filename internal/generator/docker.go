@@ -4,15 +4,13 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-
-	"github.com/Levi9111/create-express-modular-go/internal/pm"
 )
 
 func scaffoldDocker(opts ProjectOptions) error {
 	root := opts.ProjectPath
 	serviceName := strings.ToLower(opts.ProjectName)
 
-	dockerfile := fmt.Sprintf(`FROM node:20-alpine AS builder
+	dockerfile := `FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -35,7 +33,7 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 5000
 
 CMD ["node", "dist/server.js"]
-`)
+`
 
 	dockerignore := `# Dependencies
 node_modules/
@@ -122,17 +120,4 @@ services:
 		return err
 	}
 	return writeFile(filepath.Join(root, "docker-compose.yml"), compose)
-}
-
-func getPackageManagerLock(p pm.PackageManager) string {
-	switch p {
-	case pm.Bun:
-		return "bun.lockb"
-	case pm.PNPM:
-		return "pnpm-lock.yaml"
-	case pm.Yarn:
-		return "yarn.lock"
-	default:
-		return "package-lock.json"
-	}
 }
