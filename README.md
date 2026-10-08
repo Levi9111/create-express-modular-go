@@ -2,10 +2,10 @@
 
 > **High-Performance Native Golang Engine for Scaffolding Clean-Architecture Express.js + TypeScript Backends in Sub-10 Milliseconds.**
 
-[![CI](https://github.com/Levi9111/create-express-modular-go/actions/workflows/ci.yml/badge.svg)](https://github.com/Levi9111/create-express-modular-go/actions/workflows/ci.yml)
-[![Security](https://github.com/Levi9111/create-express-modular-go/actions/workflows/security.yml/badge.svg)](https://github.com/Levi9111/create-express-modular-go/actions/workflows/security.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/Levi9111/create-express-modular-go)](https://goreportcard.com/report/github.com/Levi9111/create-express-modular-go)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/Levi9111/create-express-modular-go)](https://golang.org)
+[![CI](https://github.com/Levi9111/create-express-modular-go/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Levi9111/create-express-modular-go/actions/workflows/ci.yml)
+[![Lint](https://github.com/Levi9111/create-express-modular-go/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/Levi9111/create-express-modular-go/actions/workflows/lint.yml)
+[![Security](https://github.com/Levi9111/create-express-modular-go/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/Levi9111/create-express-modular-go/actions/workflows/security.yml)
+[![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.22-00ADD8?logo=go)](https://golang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Original CLI](https://img.shields.io/badge/npm-create--express--modular-CB3837?logo=npm)](https://www.npmjs.com/package/create-express-modular)
 
