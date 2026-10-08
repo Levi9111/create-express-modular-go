@@ -42,7 +42,7 @@ jobs:
           go build -ldflags="$LDFLAGS" -o dist/${{ matrix.target.binary }} main.go
 
       - name: Upload artifact chunk
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.target.binary }}
           path: dist/${{ matrix.target.binary }}
