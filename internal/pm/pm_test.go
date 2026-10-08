@@ -41,29 +41,27 @@ func TestDetectPMFromLockfiles(t *testing.T) {
 }
 
 func TestDetectPMFromUserAgent(t *testing.T) {
-	origUA := os.Getenv("npm_config_user_agent")
-	defer os.Setenv("npm_config_user_agent", origUA)
-
 	tests := []struct {
+		name     string
 		ua       string
 		expected PackageManager
 	}{
-		{"bun/1.0.0 npm/? node/v18.0.0 linux x64", Bun},
-		{"pnpm/8.0.0 npm/? node/v18.0.0 linux x64", PNPM},
-		{"yarn/1.22.19 npm/? node/v18.0.0 linux x64", Yarn},
-		{"npm/9.0.0 node/v18.0.0 linux x64", NPM},
-		{"", NPM},
+		{"bun", "bun/1.0.0 npm/? node/v18.0.0 linux x64", Bun},
+		{"pnpm", "pnpm/8.0.0 npm/? node/v18.0.0 linux x64", PNPM},
+		{"yarn", "yarn/1.22.19 npm/? node/v18.0.0 linux x64", Yarn},
+		{"npm", "npm/9.0.0 node/v18.0.0 linux x64", NPM},
+		{"empty", "", NPM},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.ua, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			tmpDir, err := os.MkdirTemp("", "pm-ua-test-*")
 			if err != nil {
 				t.Fatalf("failed to create temp dir: %v", err)
 			}
 			defer os.RemoveAll(tmpDir)
 
-			os.Setenv("npm_config_user_agent", tt.ua)
+			t.Setenv("npm_config_user_agent", tt.ua)
 			detected := DetectPM(tmpDir)
 			if detected != tt.expected {
 				t.Errorf("expected %s for user-agent %q, got %s", tt.expected, tt.ua, detected)

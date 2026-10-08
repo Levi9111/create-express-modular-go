@@ -2,7 +2,6 @@ package telemetry
 
 import (
 	"encoding/json"
-	"os"
 	"regexp"
 	"testing"
 )
@@ -44,10 +43,7 @@ func TestPayloadSerialization(t *testing.T) {
 }
 
 func TestReportInstallOptOut(t *testing.T) {
-	orig := os.Getenv("CEM_TELEMETRY")
-	defer os.Setenv("CEM_TELEMETRY", orig)
-
-	os.Setenv("CEM_TELEMETRY", "off")
+	t.Setenv("CEM_TELEMETRY", "off")
 	// Should return immediately without network access
 	ReportInstall("test", "3.3.10", "npm")
 }
