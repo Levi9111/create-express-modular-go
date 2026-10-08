@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release-assets:
+    name: Build Release Assets (${{ matrix.target.os }}/${{ matrix.target.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - { os: linux, arch: amd64, binary: cem-linux-amd64 }
+          - { os: linux, arch: arm64, binary: cem-linux-arm64 }
+          - { os: darwin, arch: amd64, binary: cem-darwin-amd64 }
+          - { os: darwin, arch: arm64, binary: cem-darwin-arm64 }
+          - { os: windows, arch: amd64, binary: cem-windows-amd64.exe }
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+          cache: true
+
+      - name: Compile target binary
+        env:
+          GOOS: ${{ matrix.target.os }}
+          GOARCH: ${{ matrix.target.arch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+          LDFLAGS="-s -w -X github.com/Levi9111/create-express-modular-go/internal/version.Version=${{ github.ref_name }} -X github.com/Levi9111/create-express-modular-go/internal/version.GitCommit=${{ github.sha }}"
+          go build -ldflags="$LDFLAGS" -o dist/${{ matrix.target.binary }} main.go
+
+      - name: Upload artifact chunk
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target.binary }}
+          path: dist/${{ matrix.target.binary }}
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: build-release-assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate SHA256 Checksums
+        working-directory: release-assets
+        run: |
+          sha256sum * > checksums.txt
+          cat checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
