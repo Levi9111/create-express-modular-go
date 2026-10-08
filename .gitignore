@@ -1,14 +1,17 @@
-# Binaries
+# Binaries & build artifacts
 bin/
+dist/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
 
-# Test artifacts
+# Test & coverage artifacts
 *.test
 *.out
+coverage.out
+coverage.html
 
 # OS & Editor
 .DS_Store
@@ -17,7 +20,12 @@ bin/
 *.swp
 *.swo
 
-# Project temp
+# Environment files
+.env
+.env.local
+
+# Scaffolding test directories
 speed-test/
 test-api/
 prisma-api/
+new-api-me/
