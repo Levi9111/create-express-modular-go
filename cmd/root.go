@@ -10,10 +10,9 @@ import (
 	"github.com/Levi9111/create-express-modular-go/internal/pm"
 	"github.com/Levi9111/create-express-modular-go/internal/telemetry"
 	"github.com/Levi9111/create-express-modular-go/internal/ui"
+	"github.com/Levi9111/create-express-modular-go/internal/version"
 	"github.com/spf13/cobra"
 )
-
-const Version = "3.3.10-go.exp"
 
 var (
 	flagYes         bool
@@ -39,11 +38,11 @@ var RootCmd = &cobra.Command{
 	Args:  cobra.ArbitraryArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if flagVersion {
-			fmt.Println(Version)
+			fmt.Println(version.Short())
 			return
 		}
 
-		ui.PrintBanner(Version)
+		ui.PrintBanner(version.Version)
 
 		projectName := ""
 		if len(args) > 0 {
@@ -211,7 +210,7 @@ var RootCmd = &cobra.Command{
 		}
 
 		// Fire-and-forget anonymous telemetry ping
-		go telemetry.ReportInstall("create", Version, string(detectedPM))
+		go telemetry.ReportInstall("create", version.Version, string(detectedPM))
 
 		// Summary and completion
 		ui.PrintSummary(projectName, string(dbChoice), string(validatorChoice), useAuth, useDocker, useSwagger)
