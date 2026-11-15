@@ -27,6 +27,7 @@ type ProjectOptions struct {
 	TokenDelivery TokenDelivery
 	UseDocker     bool
 	UseSwagger    bool
+	UseTesting    bool
 	PM            pm.PackageManager
 	SkipInstall   bool
 }

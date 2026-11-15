@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/Levi9111/create-express-modular-go/internal/generator"
+	"github.com/Levi9111/create-express-modular-go/internal/modules"
 	"github.com/Levi9111/create-express-modular-go/internal/pm"
 	"github.com/Levi9111/create-express-modular-go/internal/telemetry"
 	"github.com/Levi9111/create-express-modular-go/internal/ui"
@@ -30,13 +33,60 @@ var (
 	flagNoInstall   bool
 	flagSkipInstall bool
 	flagVersion     bool
+	flagTesting     bool
+	flagNoTesting   bool
+	flagSpec        string
+	flagJSON        bool
+	flagQuiet       bool
 )
+
+type projectSpec struct {
+	Name          string   `json:"name"`
+	DB            string   `json:"db"`
+	Validator     string   `json:"validator"`
+	Auth          *bool    `json:"auth"`
+	TokenDelivery string   `json:"tokenDelivery"`
+	Docker        *bool    `json:"docker"`
+	Swagger       *bool    `json:"swagger"`
+	Testing       *bool    `json:"testing"`
+	Modules       []string `json:"modules"`
+	Middlewares   []string `json:"middlewares"`
+	Env           []string `json:"env"`
+}
+
+func loadProjectSpec(specArg string) (*projectSpec, error) {
+	trimmed := strings.TrimSpace(specArg)
+	var raw []byte
+	if strings.HasPrefix(trimmed, "{") {
+		raw = []byte(trimmed)
+	} else {
+		data, err := os.ReadFile(trimmed)
+		if err != nil {
+			return nil, err
+		}
+		raw = data
+	}
+	var spec projectSpec
+	if err := json.Unmarshal(raw, &spec); err != nil {
+		return nil, err
+	}
+	return &spec, nil
+}
 
 var RootCmd = &cobra.Command{
 	Use:   "cem [project-name]",
 	Short: "Scaffold a modular, domain-driven Express + TypeScript backend",
 	Long:  `CEM CLI (Go Engine) — Fast, domain-driven Express + TypeScript project scaffolder.`,
 	Args:  cobra.ArbitraryArgs,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if flagJSON {
+			ui.SetOutputMode(ui.ModeJSON)
+		} else if flagQuiet {
+			ui.SetOutputMode(ui.ModeQuiet)
+		} else {
+			ui.SetOutputMode(ui.ModeNormal)
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if flagVersion {
 			fmt.Println(version.Short())
@@ -69,7 +119,42 @@ var RootCmd = &cobra.Command{
 		tokenDelivery := generator.TokenCookie
 		useDocker := true
 		useSwagger := true
+		useTesting := false
 		skipInstall := flagNoInstall || flagSkipInstall
+
+		var spec *projectSpec
+		if flagSpec != "" {
+			var err error
+			spec, err = loadProjectSpec(flagSpec)
+			if err != nil {
+				ui.Abort("Invalid --spec input: " + err.Error())
+			}
+			flagYes = true
+			if spec.Name != "" {
+				projectName = spec.Name
+			}
+			if spec.DB != "" {
+				flagDb = spec.DB
+			}
+			if spec.Validator != "" {
+				flagValidator = spec.Validator
+			}
+			if spec.Auth != nil {
+				useAuth = *spec.Auth
+			}
+			if spec.TokenDelivery != "" {
+				tokenDelivery = generator.TokenDelivery(spec.TokenDelivery)
+			}
+			if spec.Docker != nil {
+				useDocker = *spec.Docker
+			}
+			if spec.Swagger != nil {
+				useSwagger = *spec.Swagger
+			}
+			if spec.Testing != nil {
+				useTesting = *spec.Testing
+			}
+		}
 
 		if flagYes {
 			if projectName == "" {
@@ -84,15 +169,28 @@ var RootCmd = &cobra.Command{
 			}
 			if flagNoAuth {
 				useAuth = false
+			} else if flagAuth {
+				useAuth = true
 			}
 			if flagHeader {
 				tokenDelivery = generator.TokenHeader
+			} else if flagCookie {
+				tokenDelivery = generator.TokenCookie
 			}
 			if flagNoDocker {
 				useDocker = false
+			} else if flagDocker {
+				useDocker = true
 			}
 			if flagNoSwagger {
 				useSwagger = false
+			} else if flagSwagger {
+				useSwagger = true
+			}
+			if flagNoTesting {
+				useTesting = false
+			} else if flagTesting {
+				useTesting = true
 			}
 		} else {
 			// Interactive prompts
@@ -188,6 +286,7 @@ var RootCmd = &cobra.Command{
 			TokenDelivery: tokenDelivery,
 			UseDocker:     useDocker,
 			UseSwagger:    useSwagger,
+			UseTesting:    useTesting,
 			PM:            detectedPM,
 			SkipInstall:   skipInstall,
 		}
@@ -195,6 +294,25 @@ var RootCmd = &cobra.Command{
 		// Run generator
 		if err := generator.GenerateProject(opts); err != nil {
 			ui.Abort(err.Error())
+		}
+
+		// One-shot --spec extras (modules, middlewares, env)
+		if spec != nil {
+			if len(spec.Modules) > 0 {
+				if err := modules.AddModule(projectPath, spec.Modules); err != nil {
+					ui.Abort(err.Error())
+				}
+			}
+			if len(spec.Middlewares) > 0 {
+				if err := modules.AddMiddleware(projectPath, spec.Middlewares); err != nil {
+					ui.Abort(err.Error())
+				}
+			}
+			if len(spec.Env) > 0 {
+				if err := modules.AddEnv(projectPath, spec.Env); err != nil {
+					ui.Abort(err.Error())
+				}
+			}
 		}
 
 		// Dependency installation
@@ -217,6 +335,32 @@ var RootCmd = &cobra.Command{
 
 		// Fire-and-forget anonymous telemetry ping
 		go telemetry.ReportInstall("create", version.Version, string(detectedPM))
+
+		if ui.GetOutputMode() == ui.ModeJSON {
+			var specMods, specMws, specEnv []string
+			if spec != nil {
+				specMods = spec.Modules
+				specMws = spec.Middlewares
+				specEnv = spec.Env
+			}
+			ui.PrintJSON(map[string]any{
+				"ok":          true,
+				"engine":      "go",
+				"project":     projectName,
+				"path":        projectPath,
+				"db":          dbChoice,
+				"validator":   validatorChoice,
+				"auth":        useAuth,
+				"docker":      useDocker,
+				"swagger":     useSwagger,
+				"testing":     useTesting,
+				"pm":          detectedPM,
+				"modules":     specMods,
+				"middlewares": specMws,
+				"env":         specEnv,
+			})
+			return
+		}
 
 		// Summary and completion
 		ui.PrintSummary(projectName, string(dbChoice), string(validatorChoice), useAuth, useDocker, useSwagger)
@@ -243,6 +387,11 @@ func init() {
 	RootCmd.Flags().BoolVar(&flagNoDocker, "no-docker", false, "Disable Docker files")
 	RootCmd.Flags().BoolVar(&flagSwagger, "swagger", false, "Enable Swagger API docs")
 	RootCmd.Flags().BoolVar(&flagNoSwagger, "no-swagger", false, "Disable Swagger API docs")
+	RootCmd.Flags().BoolVar(&flagTesting, "testing", false, "Enable Vitest + Supertest testing setup")
+	RootCmd.Flags().BoolVar(&flagNoTesting, "no-testing", false, "Disable testing setup")
+	RootCmd.Flags().StringVar(&flagSpec, "spec", "", "One-shot JSON spec file path or inline JSON")
+	RootCmd.PersistentFlags().BoolVar(&flagJSON, "json", false, "Output compact JSON for AI agents and scripts")
+	RootCmd.PersistentFlags().BoolVarP(&flagQuiet, "quiet", "q", false, "Suppress banners, spinners, and decorative output")
 	RootCmd.Flags().BoolVar(&flagNoInstall, "no-install", false, "Skip dependency installation")
 	RootCmd.Flags().BoolVar(&flagSkipInstall, "skip-install", false, "Alias for --no-install")
 	RootCmd.Flags().BoolVarP(&flagVersion, "version", "v", false, "Print CLI version")

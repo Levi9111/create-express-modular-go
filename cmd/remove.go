@@ -26,6 +26,9 @@ var removeModuleCmd = &cobra.Command{
 		if err := modules.RemoveModule(cwd, args); err != nil {
 			ui.Abort(err.Error())
 		}
+		if ui.GetOutputMode() == ui.ModeJSON {
+			ui.PrintJSON(map[string]any{"ok": true, "action": "remove", "type": "module", "items": args})
+		}
 	},
 }
 
@@ -41,6 +44,9 @@ var removeMiddlewareCmd = &cobra.Command{
 		if err := modules.RemoveMiddleware(cwd, args); err != nil {
 			ui.Abort(err.Error())
 		}
+		if ui.GetOutputMode() == ui.ModeJSON {
+			ui.PrintJSON(map[string]any{"ok": true, "action": "remove", "type": "middleware", "items": args})
+		}
 	},
 }
 
@@ -55,6 +61,9 @@ var removeEnvCmd = &cobra.Command{
 		}
 		if err := modules.RemoveEnv(cwd, args); err != nil {
 			ui.Abort(err.Error())
+		}
+		if ui.GetOutputMode() == ui.ModeJSON {
+			ui.PrintJSON(map[string]any{"ok": true, "action": "remove", "type": "env", "items": args})
 		}
 	},
 }

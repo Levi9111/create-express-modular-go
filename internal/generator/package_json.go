@@ -63,6 +63,9 @@ var versionMap = map[string]string{
 	"typescript-eslint":         "^8.20.0",
 	"eslint-config-prettier":    "^10.0.1",
 	"prettier":                  "^3.4.2",
+	"vitest":                    "^3.0.0",
+	"supertest":                 "^7.0.0",
+	"@types/supertest":          "^6.0.2",
 	"create-express-modular":    "^3.3.10",
 }
 
@@ -124,6 +127,16 @@ func configurePackageJson(opts ProjectOptions) error {
 	if opts.UseSwagger {
 		prodDeps = append(prodDeps, "swagger-ui-express", "swagger-jsdoc")
 		devDeps = append(devDeps, "@types/swagger-ui-express", "@types/swagger-jsdoc")
+	}
+
+	// Testing
+	if opts.UseTesting {
+		devDeps = append(devDeps, "vitest", "supertest", "@types/supertest")
+		if pkg.Scripts == nil {
+			pkg.Scripts = make(map[string]string)
+		}
+		pkg.Scripts["test"] = "vitest run"
+		pkg.Scripts["test:watch"] = "vitest"
 	}
 
 	// CEM CLI
