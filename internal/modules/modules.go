@@ -38,16 +38,19 @@ func writeFile(path, content string) error {
 }
 
 // AddModule scaffolds one or more complete feature modules.
-func AddModule(projectRoot string, moduleNames []string) error {
+func AddModule(projectRoot string, moduleNames []string) ([]string, error) {
 	cfg, err := config.LoadConfig(projectRoot)
 	isZod := true
-	if err == nil && cfg.Validator == "joi" {
+	if err == nil && cfg.Project.Validator == "joi" {
 		isZod = false
 	}
 
-	var added []string
+	added := []string{}
 	for _, rawName := range moduleNames {
-		moduleName := capitalize(rawName)
+		if err := ValidateIdentifier(rawName); err != nil {
+			return added, err
+		}
+		moduleName := capitalize(strings.TrimSpace(rawName))
 		fileName := strings.ToLower(moduleName)
 		moduleDir := filepath.Join(projectRoot, "src/app/modules", moduleName)
 
@@ -57,7 +60,7 @@ func AddModule(projectRoot string, moduleNames []string) error {
 		}
 
 		// 1. Controller
-		_ = writeFile(filepath.Join(moduleDir, fileName+".controller.ts"), fmt.Sprintf(`import { Request, Response } from 'express';
+		if err := writeFile(filepath.Join(moduleDir, fileName+".controller.ts"), fmt.Sprintf(`import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { catchAsync } from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
@@ -120,10 +123,12 @@ export const %sController = {
   update%s,
   delete%s,
 };
-`, moduleName, fileName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName))
+`, moduleName, fileName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName)); err != nil {
+			return added, err
+		}
 
 		// 2. Service
-		_ = writeFile(filepath.Join(moduleDir, fileName+".service.ts"), fmt.Sprintf(`import { T%s } from './%s.interface';
+		if err := writeFile(filepath.Join(moduleDir, fileName+".service.ts"), fmt.Sprintf(`import { T%s } from './%s.interface';
 
 const create%s = async (payload: T%s) => {
   // TODO: Implement database insert logic
@@ -157,20 +162,24 @@ export const %sService = {
   update%s,
   delete%s,
 };
-`, moduleName, fileName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName))
+`, moduleName, fileName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName)); err != nil {
+			return added, err
+		}
 
 		// 3. Interface
-		_ = writeFile(filepath.Join(moduleDir, fileName+".interface.ts"), fmt.Sprintf(`export type T%s = {
+		if err := writeFile(filepath.Join(moduleDir, fileName+".interface.ts"), fmt.Sprintf(`export type T%s = {
   id?: string;
   name: string;
   createdAt?: Date;
   updatedAt?: Date;
 };
-`, moduleName))
+`, moduleName)); err != nil {
+			return added, err
+		}
 
 		// 4. Validation
 		if isZod {
-			_ = writeFile(filepath.Join(moduleDir, fileName+".validation.ts"), fmt.Sprintf(`import { z } from 'zod';
+			if err := writeFile(filepath.Join(moduleDir, fileName+".validation.ts"), fmt.Sprintf(`import { z } from 'zod';
 
 const create%sValidationSchema = z.object({
   body: z.object({
@@ -188,9 +197,11 @@ export const %sValidation = {
   create%sValidationSchema,
   update%sValidationSchema,
 };
-`, moduleName, moduleName, moduleName, moduleName, moduleName))
+`, moduleName, moduleName, moduleName, moduleName, moduleName)); err != nil {
+				return added, err
+			}
 		} else {
-			_ = writeFile(filepath.Join(moduleDir, fileName+".validation.ts"), fmt.Sprintf(`import Joi from 'joi';
+			if err := writeFile(filepath.Join(moduleDir, fileName+".validation.ts"), fmt.Sprintf(`import Joi from 'joi';
 
 const create%sValidationSchema = Joi.object({
   body: Joi.object({
@@ -208,16 +219,20 @@ export const %sValidation = {
   create%sValidationSchema,
   update%sValidationSchema,
 };
-`, moduleName, moduleName, moduleName, moduleName, moduleName))
+`, moduleName, moduleName, moduleName, moduleName, moduleName)); err != nil {
+				return added, err
+			}
 		}
 
 		// 5. Constants
-		_ = writeFile(filepath.Join(moduleDir, fileName+".constant.ts"), fmt.Sprintf(`export const %sSearchableFields = ['name'];
-`, moduleName))
+		if err := writeFile(filepath.Join(moduleDir, fileName+".constant.ts"), fmt.Sprintf(`export const %sSearchableFields = ['name'];
+`, moduleName)); err != nil {
+			return added, err
+		}
 
 		// 6. Route
 		routePath := "/" + pluralize(moduleName)
-		_ = writeFile(filepath.Join(moduleDir, fileName+".route.ts"), fmt.Sprintf(`import { Router } from 'express';
+		if err := writeFile(filepath.Join(moduleDir, fileName+".route.ts"), fmt.Sprintf(`import { Router } from 'express';
 import { %sController } from './%s.controller';
 import validateRequest from '../../utils/validateRequest';
 import { %sValidation } from './%s.validation';
@@ -242,25 +257,32 @@ router.patch(
 router.delete('/:id', %sController.delete%s);
 
 export const %sRoutes = router;
-`, moduleName, fileName, moduleName, fileName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName))
+`, moduleName, fileName, moduleName, fileName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName)); err != nil {
+			return added, err
+		}
 
 		// 7. Inject Route into src/app/routes/index.ts
 		importLine := fmt.Sprintf("import { %sRoutes } from '../modules/%s/%s.route';", moduleName, moduleName, fileName)
 		routeLine := fmt.Sprintf("  { path: '%s', route: %sRoutes },", routePath, moduleName)
-		_ = InjectRoute(projectRoot, importLine, routeLine)
+		if err := InjectRoute(projectRoot, importLine, routeLine); err != nil {
+			return added, err
+		}
 
 		ui.Success(fmt.Sprintf("Module '%s' created and route wired to '%s'", moduleName, routePath))
 		added = append(added, moduleName)
 	}
 	config.UpdateState(projectRoot, "modules", "add", added)
-	return nil
+	return added, nil
 }
 
 // RemoveModule deletes module folder(s) and unwires routes.
-func RemoveModule(projectRoot string, moduleNames []string) error {
-	var removed []string
+func RemoveModule(projectRoot string, moduleNames []string) ([]string, error) {
+	removed := []string{}
 	for _, rawName := range moduleNames {
-		moduleName := capitalize(rawName)
+		if err := ValidateIdentifier(rawName); err != nil {
+			return removed, err
+		}
+		moduleName := capitalize(strings.TrimSpace(rawName))
 		moduleDir := filepath.Join(projectRoot, "src/app/modules", moduleName)
 
 		if _, err := os.Stat(moduleDir); os.IsNotExist(err) {
@@ -269,24 +291,29 @@ func RemoveModule(projectRoot string, moduleNames []string) error {
 		}
 
 		if err := os.RemoveAll(moduleDir); err != nil {
-			return fmt.Errorf("failed to delete module directory: %w", err)
+			return removed, fmt.Errorf("failed to delete module directory: %w", err)
 		}
 
-		_ = RemoveRoute(projectRoot, moduleName)
+		if err := RemoveRoute(projectRoot, moduleName); err != nil {
+			return removed, fmt.Errorf("failed to unwire route: %w", err)
+		}
 		ui.Success(fmt.Sprintf("Module '%s' removed and route unwired", moduleName))
 		removed = append(removed, moduleName)
 	}
 	config.UpdateState(projectRoot, "modules", "remove", removed)
-	return nil
+	return removed, nil
 }
 
 // AddMiddleware scaffolds a new custom middleware file.
-func AddMiddleware(projectRoot string, middlewareNames []string) error {
+func AddMiddleware(projectRoot string, middlewareNames []string) ([]string, error) {
 	mwDir := filepath.Join(projectRoot, "src/app/middlewares")
-	var added []string
+	added := []string{}
 	for _, name := range middlewareNames {
-		cleanName := strings.TrimSuffix(name, ".middleware")
+		cleanName := strings.TrimSuffix(strings.TrimSpace(name), ".middleware")
 		cleanName = strings.TrimSuffix(cleanName, ".ts")
+		if err := ValidateIdentifier(cleanName); err != nil {
+			return added, err
+		}
 		filePath := filepath.Join(mwDir, cleanName+".middleware.ts")
 
 		if _, err := os.Stat(filePath); err == nil {
@@ -303,17 +330,17 @@ export const %s = (req: Request, _res: Response, next: NextFunction): void => {
 `, cleanName)
 
 		if err := writeFile(filePath, content); err != nil {
-			return err
+			return added, err
 		}
 		ui.Success(fmt.Sprintf("Middleware '%s' created at src/app/middlewares/%s.middleware.ts", cleanName, cleanName))
 		added = append(added, cleanName)
 	}
 	config.UpdateState(projectRoot, "middlewares", "add", added)
-	return nil
+	return added, nil
 }
 
 // RemoveMiddleware removes one or more custom middleware files safely.
-func RemoveMiddleware(projectRoot string, middlewareNames []string) error {
+func RemoveMiddleware(projectRoot string, middlewareNames []string) ([]string, error) {
 	protected := map[string]bool{
 		"globalErrorHandler": true,
 		"notFound":           true,
@@ -322,10 +349,13 @@ func RemoveMiddleware(projectRoot string, middlewareNames []string) error {
 	}
 
 	mwDir := filepath.Join(projectRoot, "src/app/middlewares")
-	var removed []string
+	removed := []string{}
 	for _, name := range middlewareNames {
-		cleanName := strings.TrimSuffix(name, ".middleware")
+		cleanName := strings.TrimSuffix(strings.TrimSpace(name), ".middleware")
 		cleanName = strings.TrimSuffix(cleanName, ".ts")
+		if err := ValidateIdentifier(cleanName); err != nil {
+			return removed, err
+		}
 
 		if protected[cleanName] {
 			ui.Err(fmt.Sprintf("Cannot remove protected core middleware '%s'", cleanName))
@@ -339,22 +369,22 @@ func RemoveMiddleware(projectRoot string, middlewareNames []string) error {
 		}
 
 		if err := os.Remove(filePath); err != nil {
-			return err
+			return removed, err
 		}
 		ui.Success(fmt.Sprintf("Middleware '%s' deleted", cleanName))
 		removed = append(removed, cleanName)
 	}
 	config.UpdateState(projectRoot, "middlewares", "remove", removed)
-	return nil
+	return removed, nil
 }
 
 // AddEnv adds environment variable(s) to .env, .env.example, and config/index.ts.
-func AddEnv(projectRoot string, keys []string) error {
-	var added []string
+func AddEnv(projectRoot string, keys []string) ([]string, error) {
+	added := []string{}
 	for _, rawKey := range keys {
 		key := strings.ToUpper(strings.TrimSpace(rawKey))
-		if key == "" {
-			continue
+		if err := ValidateEnvKey(key); err != nil {
+			return added, err
 		}
 
 		// Append to .env
@@ -363,7 +393,9 @@ func AddEnv(projectRoot string, keys []string) error {
 			content := string(data)
 			if !strings.Contains(content, key+"=") {
 				content += fmt.Sprintf("%s=\n", key)
-				_ = os.WriteFile(envPath, []byte(content), 0644)
+				if err := os.WriteFile(envPath, []byte(content), 0644); err != nil {
+					return added, err
+				}
 			}
 		}
 
@@ -373,47 +405,78 @@ func AddEnv(projectRoot string, keys []string) error {
 			content := string(data)
 			if !strings.Contains(content, key+"=") {
 				content += fmt.Sprintf("%s=\n", key)
-				_ = os.WriteFile(exPath, []byte(content), 0644)
+				if err := os.WriteFile(exPath, []byte(content), 0644); err != nil {
+					return added, err
+				}
 			}
 		}
 
-		ui.Success(fmt.Sprintf("Added '%s' to .env and .env.example", key))
+		// Append to src/app/config/index.ts
+		cfgPath := filepath.Join(projectRoot, "src/app/config/index.ts")
+		if data, err := os.ReadFile(cfgPath); err == nil {
+			content := string(data)
+			propName := strings.ToLower(key)
+			if !strings.Contains(content, "process.env."+key) {
+				entry := fmt.Sprintf("  %s: process.env.%s,\n", propName, key)
+				if idx := strings.LastIndex(content, "};"); idx != -1 {
+					updated := content[:idx] + entry + content[idx:]
+					if err := os.WriteFile(cfgPath, []byte(updated), 0644); err != nil {
+						return added, err
+					}
+				}
+			}
+		}
+
+		ui.Success(fmt.Sprintf("Added '%s' to .env, .env.example, and src/app/config/index.ts", key))
 		added = append(added, key)
 	}
 	config.UpdateState(projectRoot, "env", "add", added)
-	return nil
+	return added, nil
 }
 
 // RemoveEnv removes environment variable(s) from .env and .env.example.
-func RemoveEnv(projectRoot string, keys []string) error {
-	var removed []string
+func RemoveEnv(projectRoot string, keys []string) ([]string, error) {
+	removed := []string{}
 	for _, rawKey := range keys {
 		key := strings.ToUpper(strings.TrimSpace(rawKey))
-		if key == "" {
-			continue
+		if err := ValidateEnvKey(key); err != nil {
+			return removed, err
 		}
 
-		keyRegex := regexp.MustCompile(fmt.Sprintf(`(?m)^%s=.*(?:\r?\n)?`, key))
+		keyRegex := regexp.MustCompile(fmt.Sprintf(`(?m)^%s=.*(?:\r?\n)?`, regexp.QuoteMeta(key)))
 
 		for _, fname := range []string{".env", ".env.example"} {
 			fpath := filepath.Join(projectRoot, fname)
 			if data, err := os.ReadFile(fpath); err == nil {
 				cleaned := keyRegex.ReplaceAllString(string(data), "")
-				_ = os.WriteFile(fpath, []byte(cleaned), 0644)
+				if err := os.WriteFile(fpath, []byte(cleaned), 0644); err != nil {
+					return removed, err
+				}
 			}
 		}
-		ui.Success(fmt.Sprintf("Removed '%s' from .env and .env.example", key))
+
+		// Remove from src/app/config/index.ts
+		cfgPath := filepath.Join(projectRoot, "src/app/config/index.ts")
+		if data, err := os.ReadFile(cfgPath); err == nil {
+			cfgRegex := regexp.MustCompile(fmt.Sprintf(`(?m)^\s*%s:\s*process\.env\.%s,?\r?\n?`, regexp.QuoteMeta(strings.ToLower(key)), regexp.QuoteMeta(key)))
+			cleaned := cfgRegex.ReplaceAllString(string(data), "")
+			if err := os.WriteFile(cfgPath, []byte(cleaned), 0644); err != nil {
+				return removed, err
+			}
+		}
+
+		ui.Success(fmt.Sprintf("Removed '%s' from .env, .env.example, and src/app/config/index.ts", key))
 		removed = append(removed, key)
 	}
 	config.UpdateState(projectRoot, "env", "remove", removed)
-	return nil
+	return removed, nil
 }
 
 // ListFeatures lists modules, middlewares, and env variables in the project.
 func ListFeatures(projectRoot string) error {
 	if ui.GetOutputMode() == ui.ModeJSON {
 		cfg, _ := config.LoadConfig(projectRoot)
-		var modList []string
+		modList := []string{}
 		if entries, err := os.ReadDir(filepath.Join(projectRoot, "src/app/modules")); err == nil {
 			for _, e := range entries {
 				if e.IsDir() {
@@ -421,7 +484,7 @@ func ListFeatures(projectRoot string) error {
 				}
 			}
 		}
-		var mwList []string
+		mwList := []string{}
 		if entries, err := os.ReadDir(filepath.Join(projectRoot, "src/app/middlewares")); err == nil {
 			for _, e := range entries {
 				if !e.IsDir() && strings.HasSuffix(e.Name(), ".ts") {
@@ -429,7 +492,7 @@ func ListFeatures(projectRoot string) error {
 				}
 			}
 		}
-		var envList []string
+		envList := []string{}
 		if data, err := os.ReadFile(filepath.Join(projectRoot, ".env.example")); err == nil {
 			for _, line := range strings.Split(string(data), "\n") {
 				if t := strings.TrimSpace(line); t != "" && !strings.HasPrefix(t, "#") {
