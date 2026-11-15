@@ -5,12 +5,20 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
 )
+
+var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func visibleLen(s string) int {
+	return utf8.RuneCountInString(ansiRegex.ReplaceAllString(s, ""))
+}
 
 type OutputMode int
 
@@ -156,7 +164,7 @@ func PrintSummary(name, db, validator string, auth, docker, swagger bool) {
 	}
 	row := func(label, val string) string {
 		content := fmt.Sprintf("  %-12s %s", label, val)
-		pad := W - 2 - len(label) - len(val) - 4
+		pad := W - 2 - visibleLen(content)
 		if pad < 0 {
 			pad = 0
 		}
@@ -180,7 +188,11 @@ func PrintSummary(name, db, validator string, auth, docker, swagger bool) {
 	fmt.Println(border("╭", "─", "╮"))
 	fmt.Println(blank())
 	title := Bold(Cyan("Project ready!"))
-	fmt.Printf("  %s  %-44s%s\n", Cyan("│"), title, Cyan("│"))
+	titlePad := W - 2 - 2 - visibleLen(title)
+	if titlePad < 0 {
+		titlePad = 0
+	}
+	fmt.Printf("  %s  %s%s%s\n", Cyan("│"), title, strings.Repeat(" ", titlePad), Cyan("│"))
 	fmt.Println(blank())
 	fmt.Println(border("├", "─", "┤"))
 	fmt.Println(blank())
