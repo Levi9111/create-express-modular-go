@@ -2,6 +2,7 @@
 
 BINARY_NAME=cem
 BUILD_DIR=bin
+export CGO_ENABLED?=0
 VERSION_PKG=github.com/Levi9111/create-express-modular-go/internal/version
 GIT_COMMIT?=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE?=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -34,7 +35,7 @@ test:
 	go test -v ./...
 
 test-race:
-	go test -race -v ./...
+	CGO_ENABLED=1 go test -race -v ./...
 
 test-coverage:
 	go test -coverprofile=coverage.out -covermode=atomic ./...
