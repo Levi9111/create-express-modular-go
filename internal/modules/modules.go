@@ -45,6 +45,7 @@ func AddModule(projectRoot string, moduleNames []string) error {
 		isZod = false
 	}
 
+	var added []string
 	for _, rawName := range moduleNames {
 		moduleName := capitalize(rawName)
 		fileName := strings.ToLower(moduleName)
@@ -249,12 +250,15 @@ export const %sRoutes = router;
 		_ = InjectRoute(projectRoot, importLine, routeLine)
 
 		ui.Success(fmt.Sprintf("Module '%s' created and route wired to '%s'", moduleName, routePath))
+		added = append(added, moduleName)
 	}
+	config.UpdateState(projectRoot, "modules", "add", added)
 	return nil
 }
 
 // RemoveModule deletes module folder(s) and unwires routes.
 func RemoveModule(projectRoot string, moduleNames []string) error {
+	var removed []string
 	for _, rawName := range moduleNames {
 		moduleName := capitalize(rawName)
 		moduleDir := filepath.Join(projectRoot, "src/app/modules", moduleName)
@@ -270,13 +274,16 @@ func RemoveModule(projectRoot string, moduleNames []string) error {
 
 		_ = RemoveRoute(projectRoot, moduleName)
 		ui.Success(fmt.Sprintf("Module '%s' removed and route unwired", moduleName))
+		removed = append(removed, moduleName)
 	}
+	config.UpdateState(projectRoot, "modules", "remove", removed)
 	return nil
 }
 
 // AddMiddleware scaffolds a new custom middleware file.
 func AddMiddleware(projectRoot string, middlewareNames []string) error {
 	mwDir := filepath.Join(projectRoot, "src/app/middlewares")
+	var added []string
 	for _, name := range middlewareNames {
 		cleanName := strings.TrimSuffix(name, ".middleware")
 		cleanName = strings.TrimSuffix(cleanName, ".ts")
@@ -299,7 +306,9 @@ export const %s = (req: Request, _res: Response, next: NextFunction): void => {
 			return err
 		}
 		ui.Success(fmt.Sprintf("Middleware '%s' created at src/app/middlewares/%s.middleware.ts", cleanName, cleanName))
+		added = append(added, cleanName)
 	}
+	config.UpdateState(projectRoot, "middlewares", "add", added)
 	return nil
 }
 
@@ -313,6 +322,7 @@ func RemoveMiddleware(projectRoot string, middlewareNames []string) error {
 	}
 
 	mwDir := filepath.Join(projectRoot, "src/app/middlewares")
+	var removed []string
 	for _, name := range middlewareNames {
 		cleanName := strings.TrimSuffix(name, ".middleware")
 		cleanName = strings.TrimSuffix(cleanName, ".ts")
@@ -332,12 +342,15 @@ func RemoveMiddleware(projectRoot string, middlewareNames []string) error {
 			return err
 		}
 		ui.Success(fmt.Sprintf("Middleware '%s' deleted", cleanName))
+		removed = append(removed, cleanName)
 	}
+	config.UpdateState(projectRoot, "middlewares", "remove", removed)
 	return nil
 }
 
 // AddEnv adds environment variable(s) to .env, .env.example, and config/index.ts.
 func AddEnv(projectRoot string, keys []string) error {
+	var added []string
 	for _, rawKey := range keys {
 		key := strings.ToUpper(strings.TrimSpace(rawKey))
 		if key == "" {
@@ -365,12 +378,15 @@ func AddEnv(projectRoot string, keys []string) error {
 		}
 
 		ui.Success(fmt.Sprintf("Added '%s' to .env and .env.example", key))
+		added = append(added, key)
 	}
+	config.UpdateState(projectRoot, "env", "add", added)
 	return nil
 }
 
 // RemoveEnv removes environment variable(s) from .env and .env.example.
 func RemoveEnv(projectRoot string, keys []string) error {
+	var removed []string
 	for _, rawKey := range keys {
 		key := strings.ToUpper(strings.TrimSpace(rawKey))
 		if key == "" {
@@ -387,12 +403,52 @@ func RemoveEnv(projectRoot string, keys []string) error {
 			}
 		}
 		ui.Success(fmt.Sprintf("Removed '%s' from .env and .env.example", key))
+		removed = append(removed, key)
 	}
+	config.UpdateState(projectRoot, "env", "remove", removed)
 	return nil
 }
 
 // ListFeatures lists modules, middlewares, and env variables in the project.
 func ListFeatures(projectRoot string) error {
+	if ui.GetOutputMode() == ui.ModeJSON {
+		cfg, _ := config.LoadConfig(projectRoot)
+		var modList []string
+		if entries, err := os.ReadDir(filepath.Join(projectRoot, "src/app/modules")); err == nil {
+			for _, e := range entries {
+				if e.IsDir() {
+					modList = append(modList, e.Name())
+				}
+			}
+		}
+		var mwList []string
+		if entries, err := os.ReadDir(filepath.Join(projectRoot, "src/app/middlewares")); err == nil {
+			for _, e := range entries {
+				if !e.IsDir() && strings.HasSuffix(e.Name(), ".ts") {
+					mwList = append(mwList, strings.TrimSuffix(e.Name(), ".middleware.ts"))
+				}
+			}
+		}
+		var envList []string
+		if data, err := os.ReadFile(filepath.Join(projectRoot, ".env.example")); err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				if t := strings.TrimSpace(line); t != "" && !strings.HasPrefix(t, "#") {
+					if parts := strings.SplitN(t, "=", 2); len(parts) > 0 {
+						envList = append(envList, strings.TrimSpace(parts[0]))
+					}
+				}
+			}
+		}
+		ui.PrintJSON(map[string]any{
+			"ok":          true,
+			"config":      cfg,
+			"modules":     modList,
+			"middlewares": mwList,
+			"env":         envList,
+		})
+		return nil
+	}
+
 	ui.SectionHeader("CEM Project Snapshot")
 
 	// Modules
