@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -9,6 +11,37 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
 )
+
+type OutputMode int
+
+const (
+	ModeNormal OutputMode = iota
+	ModeQuiet
+	ModeJSON
+)
+
+var currentOutputMode = ModeNormal
+
+func SetOutputMode(mode OutputMode) {
+	currentOutputMode = mode
+}
+
+func GetOutputMode() OutputMode {
+	return currentOutputMode
+}
+
+func IsSilent() bool {
+	return currentOutputMode != ModeNormal
+}
+
+func PrintJSON(v any) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		fmt.Printf(`{"ok":false,"error":%q}`+"\n", err.Error())
+		return
+	}
+	fmt.Println(string(data))
+}
 
 var (
 	Cyan    = color.New(color.FgCyan, color.Bold).SprintFunc()
@@ -25,6 +58,9 @@ const Divider = "─────────────────────
 const SubDivider = "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄"
 
 func PrintBanner(version string) {
+	if IsSilent() {
+		return
+	}
 	fmt.Println()
 	fmt.Println(Gray(Divider))
 	fmt.Println()
@@ -36,6 +72,9 @@ func PrintBanner(version string) {
 }
 
 func SectionHeader(title string) {
+	if IsSilent() {
+		return
+	}
 	fmt.Println()
 	fmt.Println(Gray("  " + SubDivider))
 	fmt.Printf("  %s\n", Bold(title))
@@ -44,26 +83,49 @@ func SectionHeader(title string) {
 }
 
 func Bullet(key, val string) {
+	if IsSilent() {
+		return
+	}
 	fmt.Printf("  %s  %-10s %s\n", Cyan("◆"), key, White(val))
 }
 
 func Substep(text string) {
+	if IsSilent() {
+		return
+	}
 	fmt.Printf("     %s  %s\n", Gray("·"), Gray(text))
 }
 
 func Warn(msg string) {
+	if IsSilent() {
+		return
+	}
 	fmt.Printf("  %s  %s\n", Yellow("⚠"), msg)
 }
 
 func Err(msg string) {
+	if currentOutputMode == ModeJSON {
+		return
+	}
 	fmt.Printf("  %s  %s\n", Red("✖"), Red(msg))
 }
 
 func Success(msg string) {
+	if IsSilent() {
+		return
+	}
 	fmt.Printf("  %s  %s\n", Green("✔"), msg)
 }
 
 func Abort(msg string) {
+	if currentOutputMode == ModeJSON {
+		PrintJSON(map[string]any{"ok": false, "error": msg})
+		os.Exit(1)
+	}
+	if currentOutputMode == ModeQuiet {
+		fmt.Fprintln(os.Stderr, msg)
+		os.Exit(1)
+	}
 	fmt.Println()
 	Err(msg)
 	fmt.Println()
@@ -72,6 +134,9 @@ func Abort(msg string) {
 
 func NewSpinner(msg string) *spinner.Spinner {
 	s := spinner.New(spinner.CharSets[14], 80*time.Millisecond)
+	if IsSilent() {
+		s.Writer = io.Discard
+	}
 	s.Prefix = "  "
 	s.Suffix = "  " + msg
 	_ = s.Color("cyan")
@@ -79,6 +144,9 @@ func NewSpinner(msg string) *spinner.Spinner {
 }
 
 func PrintSummary(name, db, validator string, auth, docker, swagger bool) {
+	if IsSilent() {
+		return
+	}
 	W := 48
 	border := func(l, m, r string) string {
 		return "  " + Cyan(l+strings.Repeat(m, W-2)+r)
@@ -128,6 +196,9 @@ func PrintSummary(name, db, validator string, auth, docker, swagger bool) {
 }
 
 func PrintNextSteps(projectName string) {
+	if IsSilent() {
+		return
+	}
 	fmt.Println(Bold("  Next steps"))
 	fmt.Println()
 	fmt.Printf("  %s  %s %s\n", Gray("1."), Cyan("cd"), White(projectName))
@@ -145,6 +216,9 @@ func PrintNextSteps(projectName string) {
 // PrintGoNotice displays a Golang-engine notice and, when an update is available,
 // points to the Go GitHub releases rather than npm.
 func PrintGoNotice(current, latest string, updateAvailable bool) {
+	if IsSilent() {
+		return
+	}
 	if !updateAvailable {
 		fmt.Printf("  %s  %s\n\n", Cyan("◆"), Gray(fmt.Sprintf("Running the Golang engine (create-express-modular-go v%s)", strings.TrimPrefix(current, "v"))))
 		return

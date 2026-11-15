@@ -34,7 +34,9 @@ func GenerateProject(opts ProjectOptions) error {
 	} else {
 		ui.Bullet("Swagger", "no")
 	}
-	fmt.Println()
+	if !ui.IsSilent() {
+		fmt.Println()
+	}
 
 	// 2. Base template extraction
 	spin := ui.NewSpinner("Writing project files...")
@@ -93,9 +95,13 @@ func GenerateProject(opts ProjectOptions) error {
 			ui.Substep("src/app/modules/Auth/  (controller · service · route · validation · interface)")
 			ui.Substep("src/app/utils/jwt.utils.ts  ·  src/app/middlewares/auth.middleware.ts")
 			ui.Substep("Token delivery: " + string(opts.TokenDelivery))
-			fmt.Println()
+			if !ui.IsSilent() {
+		fmt.Println()
+	}
 			ui.Warn("Replace stub credentials in auth.service.ts before going to production.")
-			fmt.Println()
+			if !ui.IsSilent() {
+		fmt.Println()
+	}
 		}
 	}
 
@@ -110,7 +116,9 @@ func GenerateProject(opts ProjectOptions) error {
 			dockerSpin.Stop()
 			ui.Success("Docker files generated")
 			ui.Substep("Dockerfile  ·  .dockerignore  ·  docker-compose.yml")
-			fmt.Println()
+			if !ui.IsSilent() {
+		fmt.Println()
+	}
 		}
 	}
 
@@ -125,12 +133,19 @@ func GenerateProject(opts ProjectOptions) error {
 		ui.Success("README.md, AGENTS.md & CLAUDE.md generated")
 	}
 
-	// 10. Package.json configuration
+	// 10. Testing scaffold
+	if opts.UseTesting {
+		if err := scaffoldTesting(opts); err != nil {
+			return fmt.Errorf("failed to scaffold testing files: %w", err)
+		}
+	}
+
+	// 11. Package.json configuration
 	if err := configurePackageJson(opts); err != nil {
 		return fmt.Errorf("failed to configure package.json: %w", err)
 	}
 
-	// 11. Save cem-cli.json
+	// 12. Save cem-cli.json
 	cfg := &config.CemConfig{
 		Name:           opts.ProjectName,
 		DB:             string(opts.DB),
@@ -139,7 +154,13 @@ func GenerateProject(opts ProjectOptions) error {
 		TokenDelivery:  string(opts.TokenDelivery),
 		Docker:         opts.UseDocker,
 		Swagger:        opts.UseSwagger,
+		Testing:        opts.UseTesting,
 		PackageManager: string(opts.PM),
+		State: &config.CemState{
+			Modules:     []string{},
+			Middlewares: []string{},
+			Env:         []string{},
+		},
 	}
 	return config.SaveConfig(opts.ProjectPath, cfg)
 }
