@@ -2,6 +2,7 @@
 
 BINARY_NAME=cem
 BUILD_DIR=bin
+GOPATH_BIN=$(shell go env GOPATH)/bin
 export CGO_ENABLED?=0
 VERSION_PKG=github.com/Levi9111/create-express-modular-go/internal/version
 GIT_COMMIT?=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -28,8 +29,9 @@ build:
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
 
 install:
-	go install $(LDFLAGS)
-	@echo "Installed $(BINARY_NAME) to \$$GOPATH/bin"
+	@mkdir -p $(GOPATH_BIN)
+	go build $(LDFLAGS) -o $(GOPATH_BIN)/$(BINARY_NAME) main.go
+	@echo "Installed $(BINARY_NAME) to $(GOPATH_BIN)/$(BINARY_NAME)"
 
 test:
 	go test -v ./...
