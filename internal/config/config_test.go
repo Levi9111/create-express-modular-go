@@ -14,14 +14,34 @@ func TestConfigSaveAndLoad(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	cfg := &CemConfig{
-		Name:           "test-api",
-		DB:             "mongoose",
-		Validator:      "zod",
-		Auth:           true,
-		TokenDelivery:  "cookie",
-		PackageManager: "npm",
-		Docker:         true,
-		Swagger:        true,
+		Version: "1.0.0",
+		Project: CemProject{
+			Name:              "test-api",
+			DB:                "mongoose",
+			Validator:         "zod",
+			Auth:              true,
+			AuthTokenDelivery: "cookie",
+			Docker:            true,
+			PackageManager:    "npm",
+		},
+		Structure: CemStructure{
+			SrcDir:         "src",
+			AppDir:         "src/app",
+			ModulesDir:     "src/app/modules",
+			MiddlewaresDir: "src/app/middlewares",
+			UtilsDir:       "src/app/utils",
+			ConfigDir:      "src/app/config",
+		},
+		Features: CemFeatures{
+			Testing:   false,
+			Websocket: false,
+			Swagger:   true,
+		},
+		State: &CemState{
+			Modules:     []string{},
+			Middlewares: []string{},
+			Env:         []string{},
+		},
 	}
 
 	if err := SaveConfig(tempDir, cfg); err != nil {
@@ -33,14 +53,14 @@ func TestConfigSaveAndLoad(t *testing.T) {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
 
-	if loaded.Name != "test-api" {
-		t.Errorf("Expected Name 'test-api', got '%s'", loaded.Name)
+	if loaded.Project.Name != "test-api" {
+		t.Errorf("Expected Project.Name 'test-api', got '%s'", loaded.Project.Name)
 	}
-	if loaded.DB != "mongoose" {
-		t.Errorf("Expected DB 'mongoose', got '%s'", loaded.DB)
+	if loaded.Project.DB != "mongoose" {
+		t.Errorf("Expected Project.DB 'mongoose', got '%s'", loaded.Project.DB)
 	}
-	if !loaded.Auth {
-		t.Errorf("Expected Auth true, got false")
+	if !loaded.Project.Auth {
+		t.Errorf("Expected Project.Auth true, got false")
 	}
 
 	// Verify file exists

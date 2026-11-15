@@ -1,9 +1,26 @@
 package generator
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"path/filepath"
 )
+
+func generateRandomHex(numBytes int) string {
+	b := make([]byte, numBytes)
+	if _, err := rand.Read(b); err != nil {
+		return "replace_with_a_64_char_random_hex_secret_before_starting"
+	}
+	return hex.EncodeToString(b)
+}
+
+func requiredEnvVarsLiteral(useAuth bool) string {
+	if useAuth {
+		return "['DATABASE_URL', 'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET']"
+	}
+	return "['DATABASE_URL']"
+}
 
 func scaffoldDB(opts ProjectOptions) (ErrorBlock, error) {
 	root := opts.ProjectPath
@@ -21,16 +38,18 @@ func scaffoldDB(opts ProjectOptions) (ErrorBlock, error) {
 }
 
 func scaffoldMongoose(root string, opts ProjectOptions) (ErrorBlock, error) {
+	accessSecret := generateRandomHex(48)
+	refreshSecret := generateRandomHex(48)
 	envContent := fmt.Sprintf(`PORT=5000
 NODE_ENV=development
 DATABASE_URL=mongodb://localhost:27017/%s
 CORS_ORIGIN=http://localhost:3000
 BCRYPT_SALT_ROUNDS=12
-JWT_ACCESS_SECRET=your_super_secret_access_key
+JWT_ACCESS_SECRET=%s
 JWT_ACCESS_EXPIRES_IN=1d
-JWT_REFRESH_SECRET=your_jwt_refresh_secret
+JWT_REFRESH_SECRET=%s
 JWT_REFRESH_EXPIRES_IN=365d
-`, opts.ProjectName)
+`, opts.ProjectName, accessSecret, refreshSecret)
 
 	_ = writeFile(filepath.Join(root, ".env"), envContent)
 	_ = writeFile(filepath.Join(root, ".env.example"), `PORT=5000
@@ -44,12 +63,12 @@ JWT_REFRESH_SECRET=
 JWT_REFRESH_EXPIRES_IN=365d
 `)
 
-	_ = writeFile(filepath.Join(root, "src/app/config/index.ts"), `import dotenv from 'dotenv';
+	_ = writeFile(filepath.Join(root, "src/app/config/index.ts"), fmt.Sprintf(`import dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-const requiredEnvVars = ['DATABASE_URL'] as const;
+const requiredEnvVars = %s as const;`, requiredEnvVarsLiteral(opts.UseAuth))+`
 for (const key of requiredEnvVars) {
   if (!process.env[key]) {
     throw new Error(
@@ -280,16 +299,18 @@ import handleDuplicateError from '../errors/handleDuplicateError';`,
 }
 
 func scaffoldPrisma(root string, opts ProjectOptions) (ErrorBlock, error) {
-	_ = writeFile(filepath.Join(root, ".env"), `PORT=5000
+	accessSecret := generateRandomHex(48)
+	refreshSecret := generateRandomHex(48)
+	_ = writeFile(filepath.Join(root, ".env"), fmt.Sprintf(`PORT=5000
 NODE_ENV=development
 DATABASE_URL="postgresql://user:password@localhost:5432/mydb?schema=public"
 CORS_ORIGIN=http://localhost:3000
 BCRYPT_SALT_ROUNDS=12
-JWT_ACCESS_SECRET=your_super_secret_access_key
+JWT_ACCESS_SECRET=%s
 JWT_ACCESS_EXPIRES_IN=1d
-JWT_REFRESH_SECRET=your_jwt_refresh_secret
+JWT_REFRESH_SECRET=%s
 JWT_REFRESH_EXPIRES_IN=365d
-`)
+`, accessSecret, refreshSecret))
 
 	_ = writeFile(filepath.Join(root, ".env.example"), `PORT=5000
 NODE_ENV=development
@@ -302,12 +323,12 @@ JWT_REFRESH_SECRET=
 JWT_REFRESH_EXPIRES_IN=365d
 `)
 
-	_ = writeFile(filepath.Join(root, "src/app/config/index.ts"), `import dotenv from 'dotenv';
+	_ = writeFile(filepath.Join(root, "src/app/config/index.ts"), fmt.Sprintf(`import dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-const requiredEnvVars = ['DATABASE_URL'] as const;
+const requiredEnvVars = %s as const;`, requiredEnvVarsLiteral(opts.UseAuth))+`
 for (const key of requiredEnvVars) {
   if (!process.env[key]) {
     throw new Error(___BT___Missing required environment variable: ${key}.___BT___);
@@ -406,16 +427,18 @@ export const prisma = new PrismaClient({
 }
 
 func scaffoldDrizzle(root string, opts ProjectOptions) (ErrorBlock, error) {
-	_ = writeFile(filepath.Join(root, ".env"), `PORT=5000
+	accessSecret := generateRandomHex(48)
+	refreshSecret := generateRandomHex(48)
+	_ = writeFile(filepath.Join(root, ".env"), fmt.Sprintf(`PORT=5000
 NODE_ENV=development
 DATABASE_URL="postgres://user:password@localhost:5432/mydb"
 CORS_ORIGIN=http://localhost:3000
 BCRYPT_SALT_ROUNDS=12
-JWT_ACCESS_SECRET=your_super_secret_access_key
+JWT_ACCESS_SECRET=%s
 JWT_ACCESS_EXPIRES_IN=1d
-JWT_REFRESH_SECRET=your_jwt_refresh_secret
+JWT_REFRESH_SECRET=%s
 JWT_REFRESH_EXPIRES_IN=365d
-`)
+`, accessSecret, refreshSecret))
 
 	_ = writeFile(filepath.Join(root, ".env.example"), `PORT=5000
 NODE_ENV=development
@@ -428,12 +451,12 @@ JWT_REFRESH_SECRET=
 JWT_REFRESH_EXPIRES_IN=365d
 `)
 
-	_ = writeFile(filepath.Join(root, "src/app/config/index.ts"), `import dotenv from 'dotenv';
+	_ = writeFile(filepath.Join(root, "src/app/config/index.ts"), fmt.Sprintf(`import dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-const requiredEnvVars = ['DATABASE_URL'] as const;
+const requiredEnvVars = %s as const;`, requiredEnvVarsLiteral(opts.UseAuth))+`
 for (const key of requiredEnvVars) {
   if (!process.env[key]) {
     throw new Error(___BT___Missing required environment variable: ${key}.___BT___);

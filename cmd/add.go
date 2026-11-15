@@ -22,11 +22,12 @@ var addModuleCmd = &cobra.Command{
 		if err != nil {
 			ui.Abort(err.Error())
 		}
-		if err := modules.AddModule(cwd, args); err != nil {
+		items, err := modules.AddModule(cwd, args)
+		if err != nil {
 			ui.Abort(err.Error())
 		}
 		if ui.GetOutputMode() == ui.ModeJSON {
-			ui.PrintJSON(map[string]any{"ok": true, "action": "add", "type": "module", "items": args})
+			ui.PrintJSON(map[string]any{"ok": true, "action": "add", "type": "module", "items": items})
 		}
 	},
 }
@@ -40,11 +41,12 @@ var addMiddlewareCmd = &cobra.Command{
 		if err != nil {
 			ui.Abort(err.Error())
 		}
-		if err := modules.AddMiddleware(cwd, args); err != nil {
+		items, err := modules.AddMiddleware(cwd, args)
+		if err != nil {
 			ui.Abort(err.Error())
 		}
 		if ui.GetOutputMode() == ui.ModeJSON {
-			ui.PrintJSON(map[string]any{"ok": true, "action": "add", "type": "middleware", "items": args})
+			ui.PrintJSON(map[string]any{"ok": true, "action": "add", "type": "middleware", "items": items})
 		}
 	},
 }
@@ -58,11 +60,12 @@ var addEnvCmd = &cobra.Command{
 		if err != nil {
 			ui.Abort(err.Error())
 		}
-		if err := modules.AddEnv(cwd, args); err != nil {
+		items, err := modules.AddEnv(cwd, args)
+		if err != nil {
 			ui.Abort(err.Error())
 		}
 		if ui.GetOutputMode() == ui.ModeJSON {
-			ui.PrintJSON(map[string]any{"ok": true, "action": "add", "type": "env", "items": args})
+			ui.PrintJSON(map[string]any{"ok": true, "action": "add", "type": "env", "items": items})
 		}
 	},
 }

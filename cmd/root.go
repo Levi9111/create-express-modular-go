@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/Levi9111/create-express-modular-go/internal/generator"
@@ -276,6 +277,10 @@ var RootCmd = &cobra.Command{
 			_ = survey.AskOne(swaggerPrompt, &useSwagger)
 		}
 
+		if err := modules.ValidateProjectName(projectName); err != nil {
+			ui.Abort(err.Error())
+		}
+
 		projectPath := filepath.Join(cwd, projectName)
 		opts := generator.ProjectOptions{
 			ProjectName:   projectName,
@@ -299,17 +304,17 @@ var RootCmd = &cobra.Command{
 		// One-shot --spec extras (modules, middlewares, env)
 		if spec != nil {
 			if len(spec.Modules) > 0 {
-				if err := modules.AddModule(projectPath, spec.Modules); err != nil {
+				if _, err := modules.AddModule(projectPath, spec.Modules); err != nil {
 					ui.Abort(err.Error())
 				}
 			}
 			if len(spec.Middlewares) > 0 {
-				if err := modules.AddMiddleware(projectPath, spec.Middlewares); err != nil {
+				if _, err := modules.AddMiddleware(projectPath, spec.Middlewares); err != nil {
 					ui.Abort(err.Error())
 				}
 			}
 			if len(spec.Env) > 0 {
-				if err := modules.AddEnv(projectPath, spec.Env); err != nil {
+				if _, err := modules.AddEnv(projectPath, spec.Env); err != nil {
 					ui.Abort(err.Error())
 				}
 			}
@@ -324,8 +329,7 @@ var RootCmd = &cobra.Command{
 			_, err := pm.RunSilentCommand(projectPath, cmdName, cmdArgs...)
 			installSpin.Stop()
 			if err != nil {
-				ui.Err("Dependency installation failed:")
-				fmt.Println(err.Error())
+				ui.Err("Dependency installation failed: " + err.Error())
 			} else {
 				ui.Success(fmt.Sprintf("Dependencies installed via %s", detectedPM))
 			}
@@ -337,11 +341,19 @@ var RootCmd = &cobra.Command{
 		go telemetry.ReportInstall("create", version.Version, string(detectedPM))
 
 		if ui.GetOutputMode() == ui.ModeJSON {
-			var specMods, specMws, specEnv []string
+			specMods := []string{}
+			specMws := []string{}
+			specEnv := []string{}
 			if spec != nil {
-				specMods = spec.Modules
-				specMws = spec.Middlewares
-				specEnv = spec.Env
+				if spec.Modules != nil {
+					specMods = spec.Modules
+				}
+				if spec.Middlewares != nil {
+					specMws = spec.Middlewares
+				}
+				if spec.Env != nil {
+					specEnv = spec.Env
+				}
 			}
 			ui.PrintJSON(map[string]any{
 				"ok":          true,
@@ -369,7 +381,7 @@ var RootCmd = &cobra.Command{
 		var latestVersion string
 		select {
 		case latestVersion = <-updateCh:
-		default:
+		case <-time.After(300 * time.Millisecond):
 		}
 		ui.PrintGoNotice(version.Version, latestVersion, updatenotifier.IsUpdateAvailable(version.Version, latestVersion))
 	},

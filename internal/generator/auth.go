@@ -205,33 +205,198 @@ export const AuthControllers = {
 		return err
 	}
 
-	// 6. auth.service.ts
-	err = writeFile(filepath.Join(authDir, "auth.service.ts"), `import { StatusCodes } from 'http-status-codes';
+	// 6. auth.model.ts
+	modelContent := ""
+	switch opts.DB {
+	case DbMongoose:
+		modelContent = `import { Schema, model } from 'mongoose';
+import bcrypt from 'bcrypt';
+import { TUserRole } from './auth.interface';
+
+export interface IUser {
+  _id?: string;
+  email: string;
+  password: string;
+  role: TUserRole;
+  createdAt?: Date;
+  updatedAt?: Date;
+  comparePassword(plainPassword: string): Promise<boolean>;
+}
+
+const userSchema = new Schema<IUser>(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
+    },
+    password: {
+      type: String,
+      required: true,
+      select: false,
+      minlength: 6,
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'user'],
+      default: 'user',
+    },
+  },
+  { timestamps: true },
+);
+
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) {
+    return;
+  }
+  this.password = await bcrypt.hash(this.password, 10);
+});
+
+userSchema.methods.comparePassword = async function (
+  plainPassword: string,
+): Promise<boolean> {
+  return bcrypt.compare(plainPassword, this.password);
+};
+
+export const UserModel = model<IUser>('User', userSchema);
+`
+	case DbPrisma:
+		modelContent = `// Add this to prisma/schema.prisma:
+//
+// model User {
+//   id        String   @id @default(cuid())
+//   email     String   @unique
+//   password  String
+//   role      Role     @default(user)
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
+//
+// enum Role {
+//   admin
+//   user
+// }
+`
+	case DbDrizzle:
+		modelContent = `// Add the users table to src/app/db/schema.ts:
+//
+// import { pgTable, text, varchar, timestamp } from 'drizzle-orm/pg-core';
+//
+// export const users = pgTable('users', {
+//   id:        text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+//   email:     varchar('email', { length: 255 }).notNull().unique(),
+//   password:  varchar('password', { length: 255 }).notNull(),
+//   role:      varchar('role', { length: 50 }).notNull().default('user'),
+//   createdAt: timestamp('created_at').defaultNow(),
+//   updatedAt: timestamp('updated_at').defaultNow(),
+// });
+`
+	}
+	if err = writeFile(filepath.Join(authDir, "auth.model.ts"), modelContent); err != nil {
+		return err
+	}
+
+	// 7. auth.service.ts
+	dbImports := ""
+	registerLogic := ""
+	findUserLogic := ""
+	switch opts.DB {
+	case DbMongoose:
+		dbImports = "import { UserModel } from './auth.model';"
+		registerLogic = `const existingUser = await UserModel.findOne({ email: payload.email });
+  if (existingUser) {
+    throw new AppError(StatusCodes.CONFLICT, 'User already exists');
+  }
+  const created = await UserModel.create({
+    email: payload.email,
+    password: payload.password,
+    role: payload.role || 'user',
+  });
+  return {
+    id: String(created._id),
+    email: created.email,
+    role: created.role,
+  };`
+		findUserLogic = `const user = await UserModel.findOne({ email: payload.email }).select('+password');
+  if (!user) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'User not found');
+  }`
+	case DbPrisma:
+		dbImports = "import { PrismaClient } from '@prisma/client';\n\nconst prisma = new PrismaClient();"
+		registerLogic = `const hashedPassword = await bcrypt.hash(
+    payload.password as string,
+    config.bcrypt_salt_rounds,
+  );
+  const created = await prisma.user.create({
+    data: {
+      email: payload.email,
+      password: hashedPassword,
+      role: payload.role || 'user',
+    },
+    select: { id: true, email: true, role: true },
+  });
+  return created;`
+		findUserLogic = `const user = await prisma.user.findUnique({
+    where: { email: payload.email },
+  });
+  if (!user) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'User not found');
+  }`
+	case DbDrizzle:
+		dbImports = "import { db } from '../../db';\nimport { users } from '../../db/schema';\nimport { eq } from 'drizzle-orm';"
+		registerLogic = `const hashedPassword = await bcrypt.hash(
+    payload.password as string,
+    config.bcrypt_salt_rounds,
+  );
+  const [created] = await db
+    .insert(users)
+    .values({
+      email: payload.email,
+      password: hashedPassword,
+      role: payload.role || 'user',
+    })
+    .returning({ id: users.id, email: users.email, role: users.role });
+  return created;`
+		findUserLogic = `const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, payload.email))
+    .limit(1);
+  const user = result[0];
+  if (!user) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'User not found');
+  }`
+	}
+
+	err = writeFile(filepath.Join(authDir, "auth.service.ts"), fmt.Sprintf(`import { StatusCodes } from 'http-status-codes';
 import bcrypt from 'bcrypt';
 import AppError from '../../errors/AppError';
 import { TLoginUser, TUser } from './auth.interface';
 import { createToken } from '../../utils/jwt.utils';
 import config from '../../config';
+%s
 
 const registerUser = async (payload: TUser) => {
-  const hashedPassword = await bcrypt.hash(
-    payload.password as string,
-    config.bcrypt_salt_rounds,
-  );
-
-  return {
-    id: 'user-id-placeholder',
-    email: payload.email,
-    role: payload.role || 'user',
-    password: hashedPassword,
-  };
+  %s
 };
 
 const loginUser = async (payload: TLoginUser) => {
-  // In production, fetch user from DB and compare passwords using bcrypt.compare
+  %s
+
+  const isPasswordMatch = await bcrypt.compare(
+    payload.password ?? '',
+    user.password,
+  );
+  if (!isPasswordMatch) {
+    throw new AppError(StatusCodes.UNAUTHORIZED, 'Invalid credentials');
+  }
+
   const jwtPayload = {
-    userId: 'user-id-placeholder',
-    role: 'user',
+    userId: String((user as { id?: string; _id?: unknown }).id || (user as { _id?: unknown })._id),
+    role: user.role,
   };
 
   const accessToken = createToken(
@@ -256,7 +421,7 @@ export const AuthService = {
   registerUser,
   loginUser,
 };
-`)
+`, dbImports, registerLogic, findUserLogic))
 	if err != nil {
 		return err
 	}

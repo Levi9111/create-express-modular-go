@@ -6,6 +6,31 @@ import (
 	"path/filepath"
 )
 
+type CemProject struct {
+	Name              string `json:"name"`
+	DB                string `json:"db"`
+	Validator         string `json:"validator"`
+	Auth              bool   `json:"auth"`
+	AuthTokenDelivery string `json:"authTokenDelivery,omitempty"`
+	Docker            bool   `json:"docker"`
+	PackageManager    string `json:"packageManager"`
+}
+
+type CemStructure struct {
+	SrcDir         string `json:"srcDir"`
+	AppDir         string `json:"appDir"`
+	ModulesDir     string `json:"modulesDir"`
+	MiddlewaresDir string `json:"middlewaresDir"`
+	UtilsDir       string `json:"utilsDir"`
+	ConfigDir      string `json:"configDir"`
+}
+
+type CemFeatures struct {
+	Testing   bool `json:"testing"`
+	Websocket bool `json:"websocket"`
+	Swagger   bool `json:"swagger"`
+}
+
 type CemState struct {
 	Modules     []string `json:"modules"`
 	Middlewares []string `json:"middlewares"`
@@ -13,16 +38,11 @@ type CemState struct {
 }
 
 type CemConfig struct {
-	Name           string    `json:"name"`
-	DB             string    `json:"db"`
-	Validator      string    `json:"validator"`
-	Auth           bool      `json:"auth"`
-	TokenDelivery  string    `json:"tokenDelivery,omitempty"`
-	Docker         bool      `json:"docker"`
-	Swagger        bool      `json:"swagger"`
-	Testing        bool      `json:"testing,omitempty"`
-	PackageManager string    `json:"packageManager"`
-	State          *CemState `json:"state,omitempty"`
+	Version   string       `json:"version"`
+	Project   CemProject   `json:"project"`
+	Structure CemStructure `json:"structure"`
+	Features  CemFeatures  `json:"features"`
+	State     *CemState    `json:"state,omitempty"`
 }
 
 const ConfigFileName = "cem-cli.json"

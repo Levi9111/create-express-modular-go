@@ -146,16 +146,34 @@ func GenerateProject(opts ProjectOptions) error {
 	}
 
 	// 12. Save cem-cli.json
+	tokenDelivery := ""
+	if opts.UseAuth {
+		tokenDelivery = string(opts.TokenDelivery)
+	}
 	cfg := &config.CemConfig{
-		Name:           opts.ProjectName,
-		DB:             string(opts.DB),
-		Validator:      string(opts.Validator),
-		Auth:           opts.UseAuth,
-		TokenDelivery:  string(opts.TokenDelivery),
-		Docker:         opts.UseDocker,
-		Swagger:        opts.UseSwagger,
-		Testing:        opts.UseTesting,
-		PackageManager: string(opts.PM),
+		Version: "1.0.0",
+		Project: config.CemProject{
+			Name:              opts.ProjectName,
+			DB:                string(opts.DB),
+			Validator:         string(opts.Validator),
+			Auth:              opts.UseAuth,
+			AuthTokenDelivery: tokenDelivery,
+			Docker:            opts.UseDocker,
+			PackageManager:    string(opts.PM),
+		},
+		Structure: config.CemStructure{
+			SrcDir:         "src",
+			AppDir:         "src/app",
+			ModulesDir:     "src/app/modules",
+			MiddlewaresDir: "src/app/middlewares",
+			UtilsDir:       "src/app/utils",
+			ConfigDir:      "src/app/config",
+		},
+		Features: config.CemFeatures{
+			Testing:   opts.UseTesting,
+			Websocket: false,
+			Swagger:   opts.UseSwagger,
+		},
 		State: &config.CemState{
 			Modules:     []string{},
 			Middlewares: []string{},
