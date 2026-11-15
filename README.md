@@ -264,7 +264,7 @@ A head-to-head benchmark running non-interactive scaffolding (`-y --no-install`)
 | **Disk Scaffolding**     | `~132 ms`                                 | **`8 ms` (0.008s)**                         | **16.5x faster** |
 | **Peak Memory (RSS)**    | `68 MB`                                   | **`11.8 MB`**                               | **5.7x lighter** |
 | **Binary Size**          | `~45 MB` (with `node_modules`)            | **`9.0 MB` (standalone)**                   | **5x smaller**   |
-| **Runtime Dependencies** | Node.js 18+, npm/npx                      | **Zero (Native compiled binary)**           | 100% portable    |
+| **Runtime Dependencies** | Node.js 22+, npm/npx                      | **Zero (Native compiled binary)**           | 100% portable    |
 
 ### Latency Breakdown: Where Does Time Go?
 
