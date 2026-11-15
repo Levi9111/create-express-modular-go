@@ -46,10 +46,10 @@ func TestDetectPMFromUserAgent(t *testing.T) {
 		ua       string
 		expected PackageManager
 	}{
-		{"bun", "bun/1.0.0 npm/? node/v18.0.0 linux x64", Bun},
-		{"pnpm", "pnpm/8.0.0 npm/? node/v18.0.0 linux x64", PNPM},
-		{"yarn", "yarn/1.22.19 npm/? node/v18.0.0 linux x64", Yarn},
-		{"npm", "npm/9.0.0 node/v18.0.0 linux x64", NPM},
+		{"bun", "bun/1.0.0 npm/? node/v22.0.0 linux x64", Bun},
+		{"pnpm", "pnpm/8.0.0 npm/? node/v22.0.0 linux x64", PNPM},
+		{"yarn", "yarn/1.22.19 npm/? node/v22.0.0 linux x64", Yarn},
+		{"npm", "npm/9.0.0 node/v22.0.0 linux x64", NPM},
 		{"empty", "", NPM},
 	}
 
