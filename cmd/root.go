@@ -10,6 +10,7 @@ import (
 	"github.com/Levi9111/create-express-modular-go/internal/pm"
 	"github.com/Levi9111/create-express-modular-go/internal/telemetry"
 	"github.com/Levi9111/create-express-modular-go/internal/ui"
+	"github.com/Levi9111/create-express-modular-go/internal/updatenotifier"
 	"github.com/Levi9111/create-express-modular-go/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -43,6 +44,11 @@ var RootCmd = &cobra.Command{
 		}
 
 		ui.PrintBanner(version.Version)
+
+		updateCh := make(chan string, 1)
+		go func() {
+			updateCh <- updatenotifier.CheckForUpdates()
+		}()
 
 		projectName := ""
 		if len(args) > 0 {
@@ -215,6 +221,13 @@ var RootCmd = &cobra.Command{
 		// Summary and completion
 		ui.PrintSummary(projectName, string(dbChoice), string(validatorChoice), useAuth, useDocker, useSwagger)
 		ui.PrintNextSteps(projectName)
+
+		var latestVersion string
+		select {
+		case latestVersion = <-updateCh:
+		default:
+		}
+		ui.PrintGoNotice(version.Version, latestVersion, updatenotifier.IsUpdateAvailable(version.Version, latestVersion))
 	},
 }
 
