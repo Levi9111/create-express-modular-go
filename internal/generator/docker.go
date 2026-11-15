@@ -10,7 +10,7 @@ func scaffoldDocker(opts ProjectOptions) error {
 	root := opts.ProjectPath
 	serviceName := strings.ToLower(opts.ProjectName)
 
-	dockerfile := `FROM node:20-alpine AS builder
+	dockerfile := `FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
