@@ -141,3 +141,46 @@ func PrintNextSteps(projectName string) {
 	fmt.Printf("  %s\n", Gray("Anonymous telemetry helps improve CEM (no personal data). Disable: CEM_TELEMETRY=off"))
 	fmt.Println()
 }
+
+// PrintGoNotice displays a Golang-engine notice and, when an update is available,
+// points to the Go GitHub releases rather than npm.
+func PrintGoNotice(current, latest string, updateAvailable bool) {
+	if !updateAvailable {
+		fmt.Printf("  %s  %s\n\n", Cyan("◆"), Gray(fmt.Sprintf("Running the Golang engine (create-express-modular-go v%s)", strings.TrimPrefix(current, "v"))))
+		return
+	}
+
+	const W = 62
+	border := func(l, m, r string) string {
+		return "  " + Yellow(l+strings.Repeat(m, W)+r)
+	}
+	blank := func() string {
+		return "  " + Yellow("│") + strings.Repeat(" ", W) + Yellow("│")
+	}
+	printRow := func(colored string, plainLen int) {
+		pad := W - plainLen - 4
+		if pad < 0 {
+			pad = 0
+		}
+		fmt.Printf("  %s    %s%s%s\n", Yellow("│"), colored, strings.Repeat(" ", pad), Yellow("│"))
+	}
+
+	titlePlain := fmt.Sprintf("Update available (Go engine)! %s → %s", current, latest)
+	titleColored := fmt.Sprintf("Update available (Go engine)! %s → %s", Gray(current), Green(latest))
+
+	enginePlain := "You are using the Golang version (create-express-modular-go)."
+	engineColored := Cyan(enginePlain)
+
+	cmdPlain := "Download: github.com/Levi9111/create-express-modular-go/releases"
+	cmdColored := fmt.Sprintf("Download: %s", White("github.com/Levi9111/create-express-modular-go/releases"))
+
+	fmt.Println(border("╭", "─", "╮"))
+	fmt.Println(blank())
+	printRow(titleColored, len([]rune(titlePlain)))
+	printRow(engineColored, len([]rune(enginePlain)))
+	fmt.Println(blank())
+	printRow(cmdColored, len([]rune(cmdPlain)))
+	fmt.Println(blank())
+	fmt.Println(border("╰", "─", "╯"))
+	fmt.Println()
+}

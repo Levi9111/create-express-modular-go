@@ -81,3 +81,32 @@ func TestPrintSummary(t *testing.T) {
 		t.Fatalf("expected summary to contain project name and db, got: %s", out)
 	}
 }
+
+func TestPrintGoNotice(t *testing.T) {
+	t.Run("no update", func(t *testing.T) {
+		out := captureOutput(func() {
+			PrintGoNotice("3.3.10-go.exp", "", false)
+		})
+		if !strings.Contains(out, "Golang engine") || !strings.Contains(out, "create-express-modular-go") {
+			t.Fatalf("expected Golang engine notice, got: %s", out)
+		}
+		if strings.Contains(out, "npm i -g") {
+			t.Fatalf("should not contain npm update command, got: %s", out)
+		}
+	})
+
+	t.Run("update available", func(t *testing.T) {
+		out := captureOutput(func() {
+			PrintGoNotice("3.3.10-go.exp", "v3.4.0", true)
+		})
+		if !strings.Contains(out, "Update available (Go engine)!") {
+			t.Fatalf("expected Go engine update title, got: %s", out)
+		}
+		if !strings.Contains(out, "You are using the Golang version") {
+			t.Fatalf("expected Golang version message, got: %s", out)
+		}
+		if strings.Contains(out, "npm i -g") {
+			t.Fatalf("should not contain npm update command, got: %s", out)
+		}
+	})
+}
