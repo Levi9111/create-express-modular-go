@@ -43,11 +43,12 @@ func RemoveRoute(projectRoot, moduleName string) error {
 	content := string(data)
 
 	// Remove import line like: import { ProductRoutes } from '../modules/Product/product.route';
-	importRegex := regexp.MustCompile(fmt.Sprintf(`(?m)^import\s*\{\s*%sRoutes\s*\}\s*from\s*['"].*['"];?\r?\n?`, moduleName))
+	escapedName := regexp.QuoteMeta(moduleName)
+	importRegex := regexp.MustCompile(fmt.Sprintf(`(?m)^import\s*\{\s*%sRoutes\s*\}\s*from\s*['"].*['"];?\r?\n?`, escapedName))
 	content = importRegex.ReplaceAllString(content, "")
 
 	// Remove route entry like: { path: '/products', route: ProductRoutes },
-	routeRegex := regexp.MustCompile(fmt.Sprintf(`(?m)^\s*\{\s*path:\s*['"][^'"]*['"],\s*route:\s*%sRoutes\s*\},?\r?\n?`, moduleName))
+	routeRegex := regexp.MustCompile(fmt.Sprintf(`(?m)^\s*\{\s*path:\s*['"][^'"]*['"],\s*route:\s*%sRoutes\s*\},?\r?\n?`, escapedName))
 	content = routeRegex.ReplaceAllString(content, "")
 
 	return os.WriteFile(indexPath, []byte(content), 0644)
