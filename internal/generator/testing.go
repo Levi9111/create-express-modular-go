@@ -38,3 +38,4 @@ describe('Health Check', () => {
 	}
 	return writeFile(filepath.Join(testDir, "health.test.ts"), healthTest)
 }
+
