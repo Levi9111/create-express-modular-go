@@ -27,6 +27,9 @@ type githubRelease struct {
 }
 
 func cacheFilePath() string {
+	if cacheDir, err := os.UserCacheDir(); err == nil && cacheDir != "" {
+		return filepath.Join(cacheDir, "create-express-modular-go", cacheFileName)
+	}
 	return filepath.Join(os.TempDir(), cacheFileName)
 }
 
@@ -48,6 +51,9 @@ func readCache(path string) (string, bool) {
 }
 
 func writeCache(path, latestVersion string) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return
+	}
 	c := updateCache{
 		Timestamp:     time.Now().UnixMilli(),
 		LatestVersion: latestVersion,
