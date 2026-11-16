@@ -39,10 +39,26 @@ func writeFile(path, content string) error {
 
 // AddModule scaffolds one or more complete feature modules.
 func AddModule(projectRoot string, moduleNames []string) ([]string, error) {
+	return AddModuleWithFields(projectRoot, moduleNames, "")
+}
+
+// AddModuleWithFields scaffolds one or more feature modules with optional --fields definitions.
+func AddModuleWithFields(projectRoot string, moduleNames []string, fieldsSpec string) ([]string, error) {
+	parsedFields, err := ParseFields(fieldsSpec)
+	if err != nil {
+		return []string{}, err
+	}
+
 	cfg, err := config.LoadConfig(projectRoot)
 	isZod := true
-	if err == nil && cfg.Project.Validator == "joi" {
-		isZod = false
+	dbChoice := "mongoose"
+	if err == nil && cfg != nil {
+		if cfg.Project.Validator == "joi" {
+			isZod = false
+		}
+		if cfg.Project.DB != "" {
+			dbChoice = cfg.Project.DB
+		}
 	}
 
 	added := []string{}
@@ -128,105 +144,77 @@ export const %sController = {
 		}
 
 		// 2. Service
-		if err := writeFile(filepath.Join(moduleDir, fileName+".service.ts"), fmt.Sprintf(`import { T%s } from './%s.interface';
-
-const create%s = async (payload: T%s) => {
-  // TODO: Implement database insert logic
-  return payload;
-};
-
-const getAll%ss = async (_query: Record<string, unknown>) => {
-  // TODO: Implement database query logic
-  return [];
-};
-
-const getSingle%s = async (id: string) => {
-  // TODO: Implement database findById logic
-  return { id };
-};
-
-const update%s = async (id: string, payload: Partial<T%s>) => {
-  // TODO: Implement database update logic
-  return { id, ...payload };
-};
-
-const delete%s = async (id: string) => {
-  // TODO: Implement database delete logic
-  return { id };
-};
-
-export const %sService = {
-  create%s,
-  getAll%ss,
-  getSingle%s,
-  update%s,
-  delete%s,
-};
-`, moduleName, fileName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName, moduleName)); err != nil {
+		serviceContent := buildGoServiceContent(moduleName, fileName, dbChoice, len(parsedFields) > 0)
+		if err := writeFile(filepath.Join(moduleDir, fileName+".service.ts"), serviceContent); err != nil {
 			return added, err
 		}
 
 		// 3. Interface
-		if err := writeFile(filepath.Join(moduleDir, fileName+".interface.ts"), fmt.Sprintf(`export type T%s = {
-  id?: string;
-  name: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-};
-`, moduleName)); err != nil {
+		interfaceContent := buildGoInterfaceContent(moduleName, parsedFields, dbChoice == "mongoose")
+		if err := writeFile(filepath.Join(moduleDir, fileName+".interface.ts"), interfaceContent); err != nil {
 			return added, err
 		}
 
-		// 4. Validation
-		if isZod {
-			if err := writeFile(filepath.Join(moduleDir, fileName+".validation.ts"), fmt.Sprintf(`import { z } from 'zod';
-
-const create%sValidationSchema = z.object({
-  body: z.object({
-    name: z.string({ required_error: 'Name is required' }),
-  }),
-});
-
-const update%sValidationSchema = z.object({
-  body: z.object({
-    name: z.string().optional(),
-  }),
-});
-
-export const %sValidation = {
-  create%sValidationSchema,
-  update%sValidationSchema,
-};
-`, moduleName, moduleName, moduleName, moduleName, moduleName)); err != nil {
+		// 3b. Model
+		if dbChoice == "mongoose" {
+			modelContent := buildGoMongooseModelContent(moduleName, fileName, parsedFields)
+			if err := writeFile(filepath.Join(moduleDir, fileName+".model.ts"), modelContent); err != nil {
 				return added, err
 			}
-		} else {
-			if err := writeFile(filepath.Join(moduleDir, fileName+".validation.ts"), fmt.Sprintf(`import Joi from 'joi';
-
-const create%sValidationSchema = Joi.object({
-  body: Joi.object({
-    name: Joi.string().required(),
-  }),
-});
-
-const update%sValidationSchema = Joi.object({
-  body: Joi.object({
-    name: Joi.string().optional(),
-  }),
-});
-
-export const %sValidation = {
-  create%sValidationSchema,
-  update%sValidationSchema,
-};
-`, moduleName, moduleName, moduleName, moduleName, moduleName)); err != nil {
-				return added, err
+		} else if len(parsedFields) > 0 {
+			if dbChoice == "prisma" {
+				schemaPath := filepath.Join(projectRoot, "prisma/schema.prisma")
+				if data, err := os.ReadFile(schemaPath); err == nil {
+					if !strings.Contains(string(data), "model "+moduleName) {
+						updated := string(data) + "\n" + prismaModelBlock(moduleName, parsedFields) + "\n"
+						if err := os.WriteFile(schemaPath, []byte(updated), 0644); err != nil {
+							return added, err
+						}
+					}
+				}
+			} else if dbChoice == "drizzle" {
+				schemaPath := filepath.Join(projectRoot, "src/app/db/schema.ts")
+				tableName := pluralize(moduleName)
+				if data, err := os.ReadFile(schemaPath); err == nil {
+					existing := string(data)
+					if !strings.Contains(existing, "export const "+tableName+" =") {
+						needed := []string{"pgTable", "text", "timestamp", "uuid"}
+						for _, f := range parsedFields {
+							if f.BaseType == FieldNumber && !containsStr(needed, "doublePrecision") {
+								needed = append(needed, "doublePrecision")
+							}
+							if f.BaseType == FieldBoolean && !containsStr(needed, "boolean") {
+								needed = append(needed, "boolean")
+							}
+						}
+						impRe := regexp.MustCompile(`import\s*\{[^}]*\}\s*from\s*'drizzle-orm/pg-core';`)
+						existing = impRe.ReplaceAllString(existing, fmt.Sprintf("import { %s } from 'drizzle-orm/pg-core';", strings.Join(needed, ", ")))
+						updated := strings.TrimRight(existing, "\n") + "\n\n" + drizzleTableBlock(tableName, parsedFields) + "\n"
+						if err := os.WriteFile(schemaPath, []byte(updated), 0644); err != nil {
+							return added, err
+						}
+					}
+				}
 			}
 		}
 
+		// 4. Validation
+		validationContent := buildGoValidationContent(moduleName, isZod, parsedFields)
+		if err := writeFile(filepath.Join(moduleDir, fileName+".validation.ts"), validationContent); err != nil {
+			return added, err
+		}
+
 		// 5. Constants
-		if err := writeFile(filepath.Join(moduleDir, fileName+".constant.ts"), fmt.Sprintf(`export const %sSearchableFields = ['name'];
-`, moduleName)); err != nil {
+		searchable := searchableFieldNames(parsedFields)
+		searchableLiteral := "[]"
+		if len(searchable) > 0 {
+			quoted := make([]string, len(searchable))
+			for i, s := range searchable {
+				quoted[i] = fmt.Sprintf("'%s'", s)
+			}
+			searchableLiteral = "[" + strings.Join(quoted, ", ") + "]"
+		}
+		if err := writeFile(filepath.Join(moduleDir, fileName+".constant.ts"), fmt.Sprintf("export const %sSearchableFields: string[] = %s;\n", moduleName, searchableLiteral)); err != nil {
 			return added, err
 		}
 
