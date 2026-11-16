@@ -17,7 +17,7 @@ func generateRandomHex(numBytes int) string {
 
 func requiredEnvVarsLiteral(useAuth bool) string {
 	if useAuth {
-		return "['DATABASE_URL', 'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET']"
+		return "[\n  'DATABASE_URL',\n  'JWT_ACCESS_SECRET',\n  'JWT_REFRESH_SECRET',\n]"
 	}
 	return "['DATABASE_URL']"
 }
