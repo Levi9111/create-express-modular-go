@@ -170,9 +170,11 @@ The `cem` CLI comes with domain generator commands to rapidly build out clean, m
 ```bash
 cd my-api
 
-# Generate a complete domain module (controller, service, route, validation, interface)
-# Automatically registers and wires routes in src/app/routes/index.ts
+# Generate a complete domain module with working CRUD, validation, and auto-wired routes
 cem add module Product
+
+# Or generate with typed fields (interface, Mongoose/Prisma/Drizzle schema, Zod/Joi validation)
+cem add module Product --fields "name:string,price:number,inStock:boolean?,category:enum(food|tech),owner:ref(User)"
 
 # Generate a custom middleware in src/app/middlewares/
 cem add middleware requestLogger

@@ -71,7 +71,7 @@ Built with [create-express-modular](https://create-express-modular.lovable.app/)
 
 ## CLI Commands
 - `+"`cem list --json`"+` — inspect modules, middlewares, env
-- `+"`cem add module <Name...> --json`"+` — scaffold module(s) & wire routes
+- `+"`cem add module <Name...> [--fields \"name:string,price:number,inStock:boolean?,category:enum(a|b),owner:ref(User),tags:string[]?\"] --json`"+` — scaffold module(s) with typed schema, validation, wired routes, & CRUD service
 - `+"`cem add middleware <name...> --json`"+` — scaffold `+"`<name>.middleware.ts`"+`
 - `+"`cem add env <KEY...> --json`"+` — add env key(s) to `+"`.env`"+`, `+"`.env.example`"+`, `+"`src/app/config/index.ts`"+`
 - `+"`cem remove module|middleware|env <name...> --json`"+` — remove & unwire
@@ -93,7 +93,7 @@ See `+"`AGENTS.md`"+` for full rules and `+"`cem-cli.json`"+` for live project s
 
 ## Commands (Prefer `+"`--json`"+` / `+"`--quiet`"+` to minimize output)
 - `+"`cem list --json`"+` — inspect project state
-- `+"`cem add module <Name...> --json`"+` — generate module + wire route
+- `+"`cem add module <Name...> [--fields \"name:string,price:number\"] --json`"+` — generate typed module, CRUD service, & wired route
 - `+"`cem add middleware <name...> --json`"+` — generate `+"`<name>.middleware.ts`"+`
 - `+"`cem add env <KEY...> --json`"+` — add env var
 - `+"`cem check --json`"+` — typecheck, lint, format
