@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var flagFields string
+
 var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add modules, middlewares, or environment variables",
@@ -22,7 +24,7 @@ var addModuleCmd = &cobra.Command{
 		if err != nil {
 			ui.Abort(err.Error())
 		}
-		items, err := modules.AddModule(cwd, args)
+		items, err := modules.AddModuleWithFields(cwd, args, flagFields)
 		if err != nil {
 			ui.Abort(err.Error())
 		}
@@ -71,6 +73,7 @@ var addEnvCmd = &cobra.Command{
 }
 
 func init() {
+	addModuleCmd.Flags().StringVar(&flagFields, "fields", "", "Field definitions (e.g. \"name:string,price:number,inStock:boolean?\")")
 	addCmd.AddCommand(addModuleCmd)
 	addCmd.AddCommand(addMiddlewareCmd)
 	addCmd.AddCommand(addEnvCmd)

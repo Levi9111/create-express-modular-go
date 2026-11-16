@@ -41,18 +41,38 @@ var (
 	flagQuiet       bool
 )
 
+type specModule struct {
+	Name   string `json:"name"`
+	Fields string `json:"fields,omitempty"`
+}
+
+func (s *specModule) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		s.Name = str
+		return nil
+	}
+	type alias specModule
+	var obj alias
+	if err := json.Unmarshal(data, &obj); err != nil {
+		return err
+	}
+	*s = specModule(obj)
+	return nil
+}
+
 type projectSpec struct {
-	Name          string   `json:"name"`
-	DB            string   `json:"db"`
-	Validator     string   `json:"validator"`
-	Auth          *bool    `json:"auth"`
-	TokenDelivery string   `json:"tokenDelivery"`
-	Docker        *bool    `json:"docker"`
-	Swagger       *bool    `json:"swagger"`
-	Testing       *bool    `json:"testing"`
-	Modules       []string `json:"modules"`
-	Middlewares   []string `json:"middlewares"`
-	Env           []string `json:"env"`
+	Name          string       `json:"name"`
+	DB            string       `json:"db"`
+	Validator     string       `json:"validator"`
+	Auth          *bool        `json:"auth"`
+	TokenDelivery string       `json:"tokenDelivery"`
+	Docker        *bool        `json:"docker"`
+	Swagger       *bool        `json:"swagger"`
+	Testing       *bool        `json:"testing"`
+	Modules       []specModule `json:"modules"`
+	Middlewares   []string     `json:"middlewares"`
+	Env           []string     `json:"env"`
 }
 
 func loadProjectSpec(specArg string) (*projectSpec, error) {
@@ -303,8 +323,11 @@ var RootCmd = &cobra.Command{
 
 		// One-shot --spec extras (modules, middlewares, env)
 		if spec != nil {
-			if len(spec.Modules) > 0 {
-				if _, err := modules.AddModule(projectPath, spec.Modules); err != nil {
+			for _, mod := range spec.Modules {
+				if mod.Name == "" {
+					continue
+				}
+				if _, err := modules.AddModuleWithFields(projectPath, []string{mod.Name}, mod.Fields); err != nil {
 					ui.Abort(err.Error())
 				}
 			}
@@ -346,7 +369,11 @@ var RootCmd = &cobra.Command{
 			specEnv := []string{}
 			if spec != nil {
 				if spec.Modules != nil {
-					specMods = spec.Modules
+					for _, m := range spec.Modules {
+						if m.Name != "" {
+							specMods = append(specMods, m.Name)
+						}
+					}
 				}
 				if spec.Middlewares != nil {
 					specMws = spec.Middlewares
