@@ -163,3 +163,51 @@ func TestValidationAndConfigSync(t *testing.T) {
 		t.Errorf("expected REDIS_URL to be removed from src/app/config/index.ts")
 	}
 }
+
+func TestAddModuleWithFieldsAndCRUD(t *testing.T) {
+	if _, err := ParseFields("bad_field"); err == nil {
+		t.Errorf("expected error for field missing type")
+	}
+	if _, err := ParseFields("price:unknown"); err == nil {
+		t.Errorf("expected error for unsupported field type")
+	}
+
+	tempDir, err := os.MkdirTemp("", "cem-fields-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	_ = os.MkdirAll(filepath.Join(tempDir, "src/app/routes"), 0755)
+	_ = os.WriteFile(filepath.Join(tempDir, "src/app/routes/index.ts"), []byte("// --- INJECT IMPORTS HERE ---\nconst moduleRoutes = [\n  // --- INJECT ROUTES HERE ---\n];\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "cem-cli.json"), []byte(`{"version":"1.0.0","project":{"name":"t","db":"mongoose","validator":"zod","auth":false,"docker":false,"packageManager":"npm"}}`), 0644)
+
+	added, err := AddModuleWithFields(tempDir, []string{"Catalog"}, "title:string,price:number,inStock:boolean?,category:enum(book|tech),owner:ref(User),tags:string[]?")
+	if err != nil {
+		t.Fatalf("AddModuleWithFields failed: %v", err)
+	}
+	if len(added) != 1 || added[0] != "Catalog" {
+		t.Fatalf("expected [Catalog], got %v", added)
+	}
+
+	modDir := filepath.Join(tempDir, "src/app/modules/Catalog")
+	ifaceBytes, _ := os.ReadFile(filepath.Join(modDir, "catalog.interface.ts"))
+	if !strings.Contains(string(ifaceBytes), "Types.ObjectId") || !strings.Contains(string(ifaceBytes), "category: 'book' | 'tech';") {
+		t.Errorf("unexpected interface content:\n%s", string(ifaceBytes))
+	}
+
+	modelBytes, _ := os.ReadFile(filepath.Join(modDir, "catalog.model.ts"))
+	if !strings.Contains(string(modelBytes), "enum: ['book', 'tech']") || !strings.Contains(string(modelBytes), "ref: 'User'") {
+		t.Errorf("unexpected model content:\n%s", string(modelBytes))
+	}
+
+	serviceBytes, _ := os.ReadFile(filepath.Join(modDir, "catalog.service.ts"))
+	if !strings.Contains(string(serviceBytes), "new QueryBuilder(CatalogModel.find(), query)") {
+		t.Errorf("expected QueryBuilder CRUD in service, got:\n%s", string(serviceBytes))
+	}
+
+	valBytes, _ := os.ReadFile(filepath.Join(modDir, "catalog.validation.ts"))
+	if !strings.Contains(string(valBytes), "z.enum(['book', 'tech'])") {
+		t.Errorf("unexpected validation content:\n%s", string(valBytes))
+	}
+}
