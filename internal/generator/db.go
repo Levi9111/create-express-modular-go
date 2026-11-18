@@ -186,7 +186,9 @@ class QueryBuilder<T> {
   }
 
   sort() {
-    const sort = ((this.query.sort as string) || '-createdAt').split(',').join(' ');
+    const sort = ((this.query.sort as string) || '-createdAt')
+      .split(',')
+      .join(' ');
     this.modelQuery = this.modelQuery.sort(sort);
     return this;
   }
@@ -201,7 +203,9 @@ class QueryBuilder<T> {
   }
 
   fields() {
-    const fields = ((this.query.fields as string) || '-__v').split(',').join(' ');
+    const fields = ((this.query.fields as string) || '-__v')
+      .split(',')
+      .join(' ');
     this.modelQuery = this.modelQuery.select(fields);
     return this;
   }
@@ -223,7 +227,9 @@ export default QueryBuilder;
 	_ = writeFile(filepath.Join(root, "src/app/errors/handleCastError.ts"), `import mongoose from 'mongoose';
 import { TGenericErrorResponse } from '../interfaces/error';
 
-const handleCastError = (err: mongoose.Error.CastError): TGenericErrorResponse => {
+const handleCastError = (
+  err: mongoose.Error.CastError,
+): TGenericErrorResponse => {
   return {
     statusCode: 400,
     message: 'Invalid ID',
@@ -237,7 +243,9 @@ export default handleCastError;
 	_ = writeFile(filepath.Join(root, "src/app/errors/handleValidationError.ts"), `import mongoose from 'mongoose';
 import { TErrorSources, TGenericErrorResponse } from '../interfaces/error';
 
-const handleValidationError = (err: mongoose.Error.ValidationError): TGenericErrorResponse => {
+const handleValidationError = (
+  err: mongoose.Error.ValidationError,
+): TGenericErrorResponse => {
   const errorSources: TErrorSources = Object.values(err.errors).map((val) => ({
     path: val.path,
     message: val.message,
@@ -398,13 +406,16 @@ model User {
 	_ = writeFile(filepath.Join(root, "src/app/utils/prisma.ts"), `import { PrismaClient } from '@prisma/client';
 
 export const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  log:
+    process.env.NODE_ENV === 'development'
+      ? ['query', 'error', 'warn']
+      : ['error'],
 });
 `)
 
 	return ErrorBlock{
-		Imports: "import { Prisma } from '@prisma/client';",
-		Handler: `if (err instanceof Prisma.PrismaClientKnownRequestError) {
+		Imports: "",
+		Handler: `if (err?.name === 'PrismaClientKnownRequestError') {
     if (err.code === 'P2002') {
       statusCode = 409;
       message = 'Duplicate field value entered';
@@ -418,7 +429,7 @@ export const prisma = new PrismaClient({
       message = err.message;
       errorSources = [{ path: '', message: err.message }];
     }
-  } else if (err instanceof Prisma.PrismaClientValidationError) {
+  } else if (err?.name === 'PrismaClientValidationError') {
     statusCode = 400;
     message = 'Prisma validation error';
     errorSources = [{ path: '', message: err.message }];

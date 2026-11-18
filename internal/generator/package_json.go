@@ -66,7 +66,7 @@ var versionMap = map[string]string{
 	"vitest":                    "^3.0.0",
 	"supertest":                 "^7.0.0",
 	"@types/supertest":          "^6.0.2",
-	"create-express-modular":    "^3.3.10",
+	"create-express-modular":    "^3.4.0",
 }
 
 func configurePackageJson(opts ProjectOptions) error {

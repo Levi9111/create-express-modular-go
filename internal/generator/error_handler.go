@@ -3,16 +3,25 @@ package generator
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 )
 
 func scaffoldGlobalErrorHandler(root string, dbBlock, valBlock ErrorBlock) error {
+	var impList []string
+	if s := strings.TrimSpace(valBlock.Imports); s != "" {
+		impList = append(impList, s)
+	}
+	if s := strings.TrimSpace(dbBlock.Imports); s != "" {
+		impList = append(impList, s)
+	}
+	extraImports := strings.Join(impList, "\n")
+
 	content := fmt.Sprintf(`/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { Request, Response, NextFunction } from 'express';
 import { TErrorSources } from '../interfaces/error';
 import AppError from '../errors/AppError';
 import config from '../config';
-%s
 %s
 
 const globalErrorHandler = (
@@ -49,7 +58,7 @@ const globalErrorHandler = (
 };
 
 export default globalErrorHandler;
-`, valBlock.Imports, dbBlock.Imports, valBlock.Handler, dbBlock.Handler)
+`, extraImports, valBlock.Handler, dbBlock.Handler)
 
 	return writeFile(filepath.Join(root, "src/app/middlewares/globalErrorHandler.middleware.ts"), content)
 }
