@@ -36,6 +36,7 @@ var (
 	flagVersion     bool
 	flagTesting     bool
 	flagNoTesting   bool
+	flagPm          string
 	flagSpec        string
 	flagJSON        bool
 	flagQuiet       bool
@@ -132,6 +133,14 @@ var RootCmd = &cobra.Command{
 		}
 
 		detectedPM := pm.DetectPM(cwd)
+		if flagPm != "" {
+			switch flagPm {
+			case "npm", "yarn", "pnpm", "bun":
+				detectedPM = pm.PackageManager(flagPm)
+			default:
+				ui.Abort(fmt.Sprintf("Invalid --pm choice %q. Allowed: npm, yarn, pnpm, bun", flagPm))
+			}
+		}
 
 		// Defaults for -y / --yes
 		dbChoice := generator.DbMongoose
@@ -183,10 +192,28 @@ var RootCmd = &cobra.Command{
 			}
 			// Apply explicit flag overrides
 			if flagDb != "" {
-				dbChoice = generator.DbChoice(flagDb)
+				switch flagDb {
+				case "mongoose", "prisma", "drizzle":
+					dbChoice = generator.DbChoice(flagDb)
+				default:
+					ui.Abort(fmt.Sprintf("Invalid --db choice %q. Allowed: mongoose, prisma, drizzle", flagDb))
+				}
 			}
 			if flagValidator != "" {
-				validatorChoice = generator.ValidatorChoice(flagValidator)
+				switch flagValidator {
+				case "zod", "joi":
+					validatorChoice = generator.ValidatorChoice(flagValidator)
+				default:
+					ui.Abort(fmt.Sprintf("Invalid --validator choice %q. Allowed: zod, joi", flagValidator))
+				}
+			}
+			if spec != nil && spec.TokenDelivery != "" {
+				switch spec.TokenDelivery {
+				case "cookie", "header":
+					tokenDelivery = generator.TokenDelivery(spec.TokenDelivery)
+				default:
+					ui.Abort(fmt.Sprintf("Invalid tokenDelivery %q. Allowed: cookie, header", spec.TokenDelivery))
+				}
 			}
 			if flagNoAuth {
 				useAuth = false
@@ -428,6 +455,7 @@ func init() {
 	RootCmd.Flags().BoolVar(&flagNoSwagger, "no-swagger", false, "Disable Swagger API docs")
 	RootCmd.Flags().BoolVar(&flagTesting, "testing", false, "Enable Vitest + Supertest testing setup")
 	RootCmd.Flags().BoolVar(&flagNoTesting, "no-testing", false, "Disable testing setup")
+	RootCmd.Flags().StringVar(&flagPm, "pm", "", "Package manager override (npm | yarn | pnpm | bun)")
 	RootCmd.Flags().StringVar(&flagSpec, "spec", "", "One-shot JSON spec file path or inline JSON")
 	RootCmd.PersistentFlags().BoolVar(&flagJSON, "json", false, "Output compact JSON for AI agents and scripts")
 	RootCmd.PersistentFlags().BoolVarP(&flagQuiet, "quiet", "q", false, "Suppress banners, spinners, and decorative output")

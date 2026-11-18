@@ -71,7 +71,16 @@ var removeEnvCmd = &cobra.Command{
 	},
 }
 
+var (
+	flagRemoveYes   bool
+	flagRemoveForce bool
+)
+
 func init() {
+	for _, c := range []*cobra.Command{removeModuleCmd, removeMiddlewareCmd, removeEnvCmd} {
+		c.Flags().BoolVarP(&flagRemoveYes, "yes", "y", false, "Skip confirmation prompts")
+		c.Flags().BoolVarP(&flagRemoveForce, "force", "f", false, "Alias for --yes")
+	}
 	removeCmd.AddCommand(removeModuleCmd)
 	removeCmd.AddCommand(removeMiddlewareCmd)
 	removeCmd.AddCommand(removeEnvCmd)

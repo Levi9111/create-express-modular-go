@@ -8,7 +8,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var flagFields string
+var (
+	flagFields string
+	flagAddYes bool
+)
 
 var addCmd = &cobra.Command{
 	Use:   "add",
@@ -74,6 +77,7 @@ var addEnvCmd = &cobra.Command{
 
 func init() {
 	addModuleCmd.Flags().StringVar(&flagFields, "fields", "", "Field definitions (e.g. \"name:string,price:number,inStock:boolean?\")")
+	addModuleCmd.Flags().BoolVarP(&flagAddYes, "yes", "y", false, "Skip interactive prompts and use defaults")
 	addCmd.AddCommand(addModuleCmd)
 	addCmd.AddCommand(addMiddlewareCmd)
 	addCmd.AddCommand(addEnvCmd)
