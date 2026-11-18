@@ -2,8 +2,18 @@ package modules
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
+
+var enumValueRegex = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+
+func camelCase(s string) string {
+	if s == "" {
+		return ""
+	}
+	return strings.ToLower(s[:1]) + s[1:]
+}
 
 // BaseFieldType represents a supported --fields type.
 type BaseFieldType string
@@ -82,6 +92,11 @@ func ParseFields(raw string) ([]ParsedField, error) {
 			}
 			if len(vals) == 0 {
 				return nil, fmt.Errorf("enum field %q must specify at least one value, e.g. enum(a|b)", name)
+			}
+			for _, v := range vals {
+				if !enumValueRegex.MatchString(v) {
+					return nil, fmt.Errorf("invalid enum value %q on field %q: use only letters, digits, underscores, or hyphens", v, name)
+				}
 			}
 			fields = append(fields, ParsedField{
 				Name:       name,
@@ -462,6 +477,7 @@ export const %sService = {
 			moduleName, moduleName, moduleName, moduleName, moduleName, moduleName)
 
 	case "prisma":
+		camelName := camelCase(moduleName)
 		return fmt.Sprintf(`import { StatusCodes } from 'http-status-codes';
 import { PrismaClient } from '@prisma/client';
 import AppError from '../../errors/AppError';
@@ -483,7 +499,10 @@ const getAll%ss = async (query: Record<string, unknown>) => {
     modelDelegate.findMany({ skip, take: limit }),
     modelDelegate.count(),
   ]);
-  return { meta: { page, limit, total, totalPages: Math.ceil(total / limit) }, data };
+  return {
+    meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    data,
+  };
 };
 
 const getSingle%s = async (id: string) => {
@@ -511,7 +530,7 @@ export const %sService = {
   update%s,
   delete%s,
 };
-`, moduleName, fileName, fileName,
+`, moduleName, fileName, camelName,
 			moduleName, moduleName,
 			moduleName,
 			moduleName, moduleName,
@@ -542,7 +561,11 @@ const getAll%ss = async (query: Record<string, unknown>) => {
 };
 
 const getSingle%s = async (id: string) => {
-  const [result] = await db.select().from(%s).where(eq(%s.id, id)).limit(1);
+  const [result] = await db
+    .select()
+    .from(%s)
+    .where(eq(%s.id, id))
+    .limit(1);
   if (!result) {
     throw new AppError(StatusCodes.NOT_FOUND, '%s not found');
   }
@@ -562,7 +585,10 @@ const update%s = async (id: string, payload: Partial<T%s>) => {
 };
 
 const delete%s = async (id: string) => {
-  const [deleted] = await db.delete(%s).where(eq(%s.id, id)).returning();
+  const [deleted] = await db
+    .delete(%s)
+    .where(eq(%s.id, id))
+    .returning();
   if (!deleted) {
     throw new AppError(StatusCodes.NOT_FOUND, '%s not found');
   }

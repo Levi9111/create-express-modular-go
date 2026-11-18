@@ -171,6 +171,12 @@ func TestAddModuleWithFieldsAndCRUD(t *testing.T) {
 	if _, err := ParseFields("price:unknown"); err == nil {
 		t.Errorf("expected error for unsupported field type")
 	}
+	if _, err := ParseFields("role:enum(a'|evil)"); err == nil {
+		t.Errorf("expected error for unsafe enum value")
+	}
+	if camelCase("OrderItem") != "orderItem" {
+		t.Errorf("expected camelCase('OrderItem') = 'orderItem', got %q", camelCase("OrderItem"))
+	}
 
 	tempDir, err := os.MkdirTemp("", "cem-fields-test-*")
 	if err != nil {

@@ -103,7 +103,8 @@ const getAll%ss = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getSingle%s = catchAsync(async (req: Request, res: Response) => {
-  const result = await %sService.getSingle%s(req.params.id as string);
+  const id = req.params.id as string;
+  const result = await %sService.getSingle%s(id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -113,7 +114,8 @@ const getSingle%s = catchAsync(async (req: Request, res: Response) => {
 });
 
 const update%s = catchAsync(async (req: Request, res: Response) => {
-  const result = await %sService.update%s(req.params.id as string, req.body);
+  const id = req.params.id as string;
+  const result = await %sService.update%s(id, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -123,7 +125,8 @@ const update%s = catchAsync(async (req: Request, res: Response) => {
 });
 
 const delete%s = catchAsync(async (req: Request, res: Response) => {
-  const result = await %sService.delete%s(req.params.id as string);
+  const id = req.params.id as string;
+  const result = await %sService.delete%s(id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -188,7 +191,12 @@ export const %sController = {
 							}
 						}
 						impRe := regexp.MustCompile(`import\s*\{[^}]*\}\s*from\s*'drizzle-orm/pg-core';`)
-						existing = impRe.ReplaceAllString(existing, fmt.Sprintf("import { %s } from 'drizzle-orm/pg-core';", strings.Join(needed, ", ")))
+						singleImp := fmt.Sprintf("import { %s } from 'drizzle-orm/pg-core';", strings.Join(needed, ", "))
+						formattedImp := singleImp
+						if len(singleImp) > 80 {
+							formattedImp = fmt.Sprintf("import {\n  %s,\n} from 'drizzle-orm/pg-core';", strings.Join(needed, ",\n  "))
+						}
+						existing = impRe.ReplaceAllString(existing, formattedImp)
 						updated := strings.TrimRight(existing, "\n") + "\n\n" + drizzleTableBlock(tableName, parsedFields) + "\n"
 						if err := os.WriteFile(schemaPath, []byte(updated), 0644); err != nil {
 							return added, err
@@ -251,7 +259,7 @@ export const %sRoutes = router;
 
 		// 7. Inject Route into src/app/routes/index.ts
 		importLine := fmt.Sprintf("import { %sRoutes } from '../modules/%s/%s.route';", moduleName, moduleName, fileName)
-		routeLine := fmt.Sprintf("  { path: '%s', route: %sRoutes },", routePath, moduleName)
+		routeLine := fmt.Sprintf("{ path: '%s', route: %sRoutes },", routePath, moduleName)
 		if err := InjectRoute(projectRoot, importLine, routeLine); err != nil {
 			return added, err
 		}
