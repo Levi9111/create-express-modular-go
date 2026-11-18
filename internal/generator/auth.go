@@ -109,7 +109,8 @@ export const globalRateLimiter = rateLimit({
   max: 100,
   message: {
     success: false,
-    message: 'Too many requests from this IP, please try again after 15 minutes',
+    message:
+      'Too many requests from this IP, please try again after 15 minutes',
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -120,7 +121,8 @@ export const authRateLimiter = rateLimit({
   max: 5,
   message: {
     success: false,
-    message: 'Too many login attempts from this IP, please try again after 15 minutes',
+    message:
+      'Too many login attempts from this IP, please try again after 15 minutes',
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -156,15 +158,22 @@ export type TLoginUser = {
 	if opts.TokenDelivery == TokenCookie {
 		cookieLogic = `
   const { refreshToken, accessToken } = result;
-
-  res.cookie('refreshToken', refreshToken, {
-    secure: config.NODE_ENV === 'production',
+  const isProduction = config.NODE_ENV === 'production';
+  const cookieOptions = {
     httpOnly: true,
-  });
+    secure: isProduction,
+    sameSite: 'strict' as const,
+    path: '/',
+  };
 
   res.cookie('accessToken', accessToken, {
-    secure: config.NODE_ENV === 'production',
-    httpOnly: true,
+    ...cookieOptions,
+    maxAge: 15 * 60 * 1000,
+  });
+
+  res.cookie('refreshToken', refreshToken, {
+    ...cookieOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 `
 	}
@@ -313,14 +322,16 @@ export const UserModel = model<IUser>('User', userSchema);
   const created = await UserModel.create({
     email: payload.email,
     password: payload.password,
-    role: payload.role || 'user',
+    role: 'user',
   });
   return {
     id: String(created._id),
     email: created.email,
     role: created.role,
   };`
-		findUserLogic = `const user = await UserModel.findOne({ email: payload.email }).select('+password');
+		findUserLogic = `const user = await UserModel.findOne({ email: payload.email }).select(
+    '+password',
+  );
   if (!user) {
     throw new AppError(StatusCodes.NOT_FOUND, 'User not found');
   }`
@@ -334,7 +345,7 @@ export const UserModel = model<IUser>('User', userSchema);
     data: {
       email: payload.email,
       password: hashedPassword,
-      role: payload.role || 'user',
+      role: 'user',
     },
     select: { id: true, email: true, role: true },
   });
@@ -356,7 +367,7 @@ export const UserModel = model<IUser>('User', userSchema);
     .values({
       email: payload.email,
       password: hashedPassword,
-      role: payload.role || 'user',
+      role: 'user',
     })
     .returning({ id: users.id, email: users.email, role: users.role });
   return created;`
@@ -395,7 +406,10 @@ const loginUser = async (payload: TLoginUser) => {
   }
 
   const jwtPayload = {
-    userId: String((user as { id?: string; _id?: unknown }).id || (user as { _id?: unknown })._id),
+    userId: String(
+      (user as { id?: string; _id?: unknown }).id ||
+        (user as { _id?: unknown })._id,
+    ),
     role: user.role,
   };
 
@@ -434,7 +448,6 @@ const registerValidationSchema = z.object({
   body: z.object({
     email: z.string().email(),
     password: z.string().min(6),
-    role: z.enum(['user', 'admin']).optional(),
   }),
 });
 
@@ -454,18 +467,13 @@ export const AuthValidation = {
 		err = writeFile(filepath.Join(authDir, "auth.validation.ts"), `import Joi from 'joi';
 
 const registerValidationSchema = Joi.object({
-  body: Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().min(6).required(),
-    role: Joi.string().valid('user', 'admin').optional(),
-  }),
+  email: Joi.string().email().required(),
+  password: Joi.string().min(6).required(),
 });
 
 const loginValidationSchema = Joi.object({
-  body: Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().min(6).required(),
-  }),
+  email: Joi.string().email().required(),
+  password: Joi.string().min(6).required(),
 });
 
 export const AuthValidation = {

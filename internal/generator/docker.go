@@ -206,6 +206,11 @@ volumes:
 `
 	}
 
+	dependsOn := ""
+	if dbService != "" {
+		dependsOn = "\n    depends_on:\n      - db"
+	}
+
 	return fmt.Sprintf(`version: '3.9'
 
 services:
@@ -219,14 +224,12 @@ services:
       - .env
     environment:
       NODE_ENV: production
-    restart: unless-stopped
-    depends_on:
-      - db
+    restart: unless-stopped%s
     networks:
       - app-network
 %s
 networks:
   app-network:
     driver: bridge
-`, serviceName, dbService)
+`, serviceName, dependsOn, dbService)
 }
